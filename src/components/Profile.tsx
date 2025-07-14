@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User, Edit3, Calendar, Target, Globe, BookOpen, Settings, Bell } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -8,20 +9,26 @@ interface ProfileProps {
 }
 
 export default function Profile({ onNavigate }: ProfileProps) {
+  const { user, updateProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: user?.profile?.full_name || '',
+    email: user?.profile?.email || '',
+    target_score: user?.profile?.target_score || 8.0,
+    exam_date: user?.profile?.exam_date || '',
+    study_goal: user?.profile?.study_goal || 'General Improvement',
+    country: user?.profile?.country || '',
+  });
 
-  const userProfile = {
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@email.com',
-    targetScore: 8.0,
-    currentScore: 7.2,
-    examDate: '2024-03-15',
-    studyGoal: 'University Application',
-    country: 'Canada',
-    joinDate: '2024-01-01',
-    totalTests: 24,
-    studyHours: 36
+  const handleSave = async () => {
+    try {
+      await updateProfile(formData);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      alert('Error updating profile. Please try again.');
+    }
   };
 
   const renderProfileTab = () => (
@@ -33,9 +40,9 @@ export default function Profile({ onNavigate }: ProfileProps) {
             <User size={40} className="text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">{userProfile.name}</h1>
-            <p className="text-blue-100">{userProfile.email}</p>
-            <p className="text-blue-100 text-sm mt-1">Member since {new Date(userProfile.joinDate).toLocaleDateString()}</p>
+            <h1 className="text-3xl font-bold">{user?.profile?.full_name}</h1>
+            <p className="text-blue-100">{user?.profile?.email}</p>
+            <p className="text-blue-100 text-sm mt-1">Member since {new Date(user?.profile?.created_at || '').toLocaleDateString()}</p>
           </div>
           <div className="ml-auto">
             <button
@@ -53,54 +60,130 @@ export default function Profile({ onNavigate }: ProfileProps) {
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Personal Information</h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Full Name</span>
-              <span className="font-medium">{userProfile.name}</span>
+          {isEditing ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                <input
+                  type="text"
+                  value={formData.country}
+                  onChange={(e) => setFormData({...formData, country: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Study Goal</label>
+                <input
+                  type="text"
+                  value={formData.study_goal}
+                  onChange={(e) => setFormData({...formData, study_goal: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleSave}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Email</span>
-              <span className="font-medium">{userProfile.email}</span>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Full Name</span>
+                <span className="font-medium">{user?.profile?.full_name}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Email</span>
+                <span className="font-medium">{user?.profile?.email}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Country</span>
+                <span className="font-medium">{user?.profile?.country || 'Not set'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Study Goal</span>
+                <span className="font-medium">{user?.profile?.study_goal}</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Country</span>
-              <span className="font-medium">{userProfile.country}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Study Goal</span>
-              <span className="font-medium">{userProfile.studyGoal}</span>
-            </div>
-          </div>
+          )}
         </div>
 
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">IELTS Goals</h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Target Score</span>
-              <div className="flex items-center space-x-2">
-                <Target size={16} className="text-blue-600" />
-                <span className="font-bold text-blue-600">{userProfile.targetScore}</span>
+          {isEditing ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Target Score</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="9"
+                  step="0.5"
+                  value={formData.target_score}
+                  onChange={(e) => setFormData({...formData, target_score: parseFloat(e.target.value)})}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Exam Date</label>
+                <input
+                  type="date"
+                  value={formData.exam_date}
+                  onChange={(e) => setFormData({...formData, exam_date: e.target.value})}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Current Score</span>
-              <span className="font-bold text-green-600">{userProfile.currentScore}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Exam Date</span>
-              <div className="flex items-center space-x-2">
-                <Calendar size={16} className="text-orange-600" />
-                <span className="font-medium">{new Date(userProfile.examDate).toLocaleDateString()}</span>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Target Score</span>
+                <div className="flex items-center space-x-2">
+                  <Target size={16} className="text-blue-600" />
+                  <span className="font-bold text-blue-600">{user?.profile?.target_score}</span>
+                </div>
               </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Current Score</span>
+                <span className="font-bold text-green-600">{user?.profile?.current_score}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Exam Date</span>
+                <div className="flex items-center space-x-2">
+                  <Calendar size={16} className="text-orange-600" />
+                  <span className="font-medium">
+                    {user?.profile?.exam_date ? new Date(user.profile.exam_date).toLocaleDateString() : 'Not set'}
+                  </span>
+                </div>
+              </div>
+              {user?.profile?.exam_date && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Days Remaining</span>
+                  <span className="font-bold text-orange-600">
+                    {Math.ceil((new Date(user.profile.exam_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24))} days
+                  </span>
+                </div>
+              )}
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Days Remaining</span>
-              <span className="font-bold text-orange-600">
-                {Math.ceil((new Date(userProfile.examDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24))} days
-              </span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -112,28 +195,28 @@ export default function Profile({ onNavigate }: ProfileProps) {
             <div className="bg-blue-100 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-2">
               <BookOpen className="text-blue-600" size={24} />
             </div>
-            <div className="text-2xl font-bold text-gray-800">{userProfile.totalTests}</div>
+            <div className="text-2xl font-bold text-gray-800">{user?.profile?.tests_completed || 0}</div>
             <div className="text-sm text-gray-600">Tests Completed</div>
           </div>
           <div className="text-center">
             <div className="bg-green-100 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-2">
               <Target className="text-green-600" size={24} />
             </div>
-            <div className="text-2xl font-bold text-gray-800">{userProfile.studyHours}h</div>
+            <div className="text-2xl font-bold text-gray-800">{Math.floor(user?.profile?.total_study_hours || 0)}h</div>
             <div className="text-sm text-gray-600">Study Hours</div>
           </div>
           <div className="text-center">
             <div className="bg-purple-100 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-2">
               <Calendar className="text-purple-600" size={24} />
             </div>
-            <div className="text-2xl font-bold text-gray-800">7</div>
+            <div className="text-2xl font-bold text-gray-800">{user?.profile?.current_streak || 0}</div>
             <div className="text-sm text-gray-600">Day Streak</div>
           </div>
           <div className="text-center">
             <div className="bg-orange-100 p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-2">
               <Globe className="text-orange-600" size={24} />
             </div>
-            <div className="text-2xl font-bold text-gray-800">89%</div>
+            <div className="text-2xl font-bold text-gray-800">{Math.round(((user?.profile?.current_score || 0) / (user?.profile?.target_score || 8)) * 100)}%</div>
             <div className="text-sm text-gray-600">Improvement</div>
           </div>
         </div>
