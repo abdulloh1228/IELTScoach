@@ -10,11 +10,11 @@ interface ExamSelectorProps {
 export default function ExamSelector({ onNavigate }: ExamSelectorProps) {
   const examTypes = [
     {
-      title: 'Full IELTS Mock Exam',
-      duration: '3 hours',
-      sections: 4,
+      title: 'Listening',
+      duration: '30 minutes',
+      sections:,
       difficulty: 'Academic',
-      description: 'Complete practice test with all four sections: Listening, Reading, Writing, and Speaking',
+      description: 'You will hear each recording only once and answer 40 questions based on them.',
       color: 'from-blue-500 to-purple-600'
     },
     {
@@ -37,7 +37,7 @@ export default function ExamSelector({ onNavigate }: ExamSelectorProps) {
       title: 'Speaking Practice',
       duration: '15 minutes',
       sections: 3,
-      difficulty: 'General',
+      difficulty: 'Academic',
       description: 'Record your answers to speaking questions and get AI pronunciation feedback',
       color: 'from-orange-500 to-red-500'
     }
