@@ -1,13 +1,25 @@
 import React from 'react';
-import { GraduationCap, Menu, User, Bell } from 'lucide-react';
+import { GraduationCap, Menu, User, Bell, LogOut } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
 interface HeaderProps {
   onNavigate: (page: Page) => void;
+  onAuthClick: () => void;
 }
 
-export default function Header({ onNavigate }: HeaderProps) {
+export default function Header({ onNavigate, onAuthClick }: HeaderProps) {
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <header className="bg-white shadow-sm border-b border-gray-100">
       <div className="container mx-auto px-4">
@@ -58,15 +70,33 @@ export default function Header({ onNavigate }: HeaderProps) {
 
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
-            <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors">
-              <Bell size={20} />
-            </button>
-            <button 
-              onClick={() => onNavigate('profile')}
-              className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
-            >
-              <User size={20} />
-            </button>
+            {user ? (
+              <>
+                <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors">
+                  <Bell size={20} />
+                </button>
+                <button 
+                  onClick={() => onNavigate('profile')}
+                  className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  <User size={20} />
+                </button>
+                <button 
+                  onClick={handleSignOut}
+                  className="p-2 text-gray-600 hover:text-red-600 transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut size={20} />
+                </button>
+              </>
+            ) : (
+              <button 
+                onClick={onAuthClick}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Sign In
+              </button>
+            )}
             <button className="lg:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors">
               <Menu size={20} />
             </button>

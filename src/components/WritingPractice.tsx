@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, Camera, Send, Clock, FileText, User, Lightbulb } from 'lucide-react';
+import { testService } from '../lib/testService';
+import { progressService } from '../lib/progressService';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -12,34 +14,49 @@ export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
   const [essay, setEssay] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [uploadMethod, setUploadMethod] = useState<'type' | 'upload'>('type');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<any>(null);
 
   const task1Prompt = "The chart below shows the percentage of households in owned and rented accommodation in England and Wales between 1918 and 2011. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.";
   
   const task2Prompt = "Some people believe that studying at university or college is the best route to a successful career, while others believe that it is better to get a job straight after school. Discuss both views and give your opinion.";
 
-  const handleSubmit = () => {
-    if (essay.trim()) {
+  const handleSubmit = async () => {
+    if (!essay.trim()) return;
+
+    setLoading(true);
+    try {
+      // Create test session
+      const session = await testService.createTestSession('writing');
+      
+      // Submit writing essay
+      const submission = await testService.submitWritingEssay({
+        session_id: session.id,
+        task_type: selectedTask,
+        prompt: selectedTask === 'task1' ? task1Prompt : task2Prompt,
+        content: essay,
+        submission_type: uploadMethod,
+        ai_feedback: {},
+        human_feedback_requested: false,
+      });
+
+      setResults(submission);
       setShowResults(true);
+      
+      // Update user stats
+      await progressService.incrementTestCompletion();
+      await progressService.addStudyTime(selectedTask === 'task1' ? 20 : 40);
+    } catch (error) {
+      console.error('Error submitting essay:', error);
+      alert('Error submitting essay. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const mockResults = {
-    overallScore: 7.5,
-    taskResponse: 8.0,
-    coherenceCohesion: 7.0,
-    lexicalResource: 7.5,
-    grammaticalRange: 7.0,
-    feedback: [
-      "Excellent task achievement with clear position and well-developed arguments",
-      "Consider using more varied cohesive devices to improve flow",
-      "Expand your vocabulary with more sophisticated synonyms",
-      "Work on complex sentence structures to show grammatical range",
-      "Strong conclusion that effectively summarizes your position"
-    ],
-    improvedVersion: "Here's how your essay could be enhanced to reach Band 8+..."
-  };
-
   if (showResults) {
+    if (!results) return null;
+
     return (
       <div className="space-y-8">
         <div className="flex items-center justify-between">
@@ -55,7 +72,7 @@ export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
         {/* Overall Score */}
         <div className="bg-gradient-to-r from-blue-600 to-teal-600 rounded-xl p-8 text-white text-center">
           <h2 className="text-2xl font-semibold mb-2">Your Estimated Band Score</h2>
-          <div className="text-6xl font-bold mb-4">{mockResults.overallScore}</div>
+          <div className="text-6xl font-bold mb-4">{results.band_score}</div>
           <p className="text-blue-100">Great progress! You're on track to reach your target score.</p>
         </div>
 
@@ -65,10 +82,10 @@ export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Detailed Band Scores</h3>
             <div className="space-y-4">
               {[
-                { criteria: 'Task Response', score: mockResults.taskResponse },
-                { criteria: 'Coherence & Cohesion', score: mockResults.coherenceCohesion },
-                { criteria: 'Lexical Resource', score: mockResults.lexicalResource },
-                { criteria: 'Grammatical Range', score: mockResults.grammaticalRange }
+                { criteria: 'Task Response', score: results.task_response },
+                { criteria: 'Coherence & Cohesion', score: results.coherence_cohesion },
+                { criteria: 'Lexical Resource', score: results.lexical_resource },
+                { criteria: 'Grammatical Range', score: results.grammatical_range }
               ].map((item, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="font-medium text-gray-800">{item.criteria}</span>
@@ -92,7 +109,7 @@ export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
               Improvement Tips
             </h3>
             <div className="space-y-3">
-              {mockResults.feedback.map((tip, index) => (
+              {results.ai_feedback.improvements?.map((tip: string, index: number) => (
                 <div key={index} className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
                   <div className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
                     {index + 1}
@@ -108,7 +125,9 @@ export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
         <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">AI-Enhanced Version (Band 8+)</h3>
           <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-green-500">
-            <p className="text-gray-700 italic">{mockResults.improvedVersion}</p>
+            <p className="text-gray-700 italic">
+              Based on your essay, here are the key improvements that would elevate your score to Band 8+...
+            </p>
             <button className="mt-4 text-green-600 hover:text-green-700 font-medium">
               View Complete Enhanced Essay →
             </button>
@@ -264,11 +283,17 @@ export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
               </span>
               <button
                 onClick={handleSubmit}
-                disabled={!essay.trim()}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
+                disabled={!essay.trim() || loading}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2 min-w-[140px] justify-center"
               >
-                <Send size={16} />
-                <span>Get AI Feedback</span>
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <>
+                    <Send size={16} />
+                    <span>Get AI Feedback</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

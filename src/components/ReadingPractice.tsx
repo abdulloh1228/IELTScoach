@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, CheckCircle, XCircle, BookOpen, ArrowRight } from 'lucide-react';
+import { testService } from '../lib/testService';
+import { progressService } from '../lib/progressService';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -12,6 +14,8 @@ export default function ReadingPractice({ onNavigate }: ReadingPracticeProps) {
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
   const [showResults, setShowResults] = useState(false);
   const [timeLeft, setTimeLeft] = useState(3600); // 60 minutes in seconds
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<any>(null);
 
   const passage = `
     The Rise of Renewable Energy
@@ -92,28 +96,43 @@ export default function ReadingPractice({ onNavigate }: ReadingPracticeProps) {
     }));
   };
 
-  const handleSubmit = () => {
-    setShowResults(true);
-  };
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      // Create test session
+      const session = await testService.createTestSession('reading');
+      
+      // Prepare correct answers
+      const correctAnswers = {
+        1: "1", // Cost reduction
+        2: "3", // 80%
+        3: "2", // Energy storage technology
+        4: "2", // European Union
+        5: "1", // It will comprise the majority of global electricity generation
+      };
+      
+      // Submit reading response
+      const response = await testService.submitReadingResponse({
+        session_id: session.id,
+        passage_id: 'renewable-energy-passage',
+        answers,
+        correct_answers: correctAnswers,
+        total_questions: questions.length,
+        time_taken: 3600 - timeLeft,
+      });
 
-  const calculateScore = () => {
-    let correct = 0;
-    questions.forEach(q => {
-      if (answers[q.id] && parseInt(answers[q.id]) === q.correct) {
-        correct++;
-      }
-    });
-    return correct;
-  };
-
-  const getBandScore = (correct: number, total: number) => {
-    const percentage = (correct / total) * 100;
-    if (percentage >= 90) return 9.0;
-    if (percentage >= 80) return 8.0;
-    if (percentage >= 70) return 7.0;
-    if (percentage >= 60) return 6.0;
-    if (percentage >= 50) return 5.0;
-    return 4.0;
+      setResults(response);
+      setShowResults(true);
+      
+      // Update user stats
+      await progressService.incrementTestCompletion();
+      await progressService.addStudyTime(60);
+    } catch (error) {
+      console.error('Error submitting reading test:', error);
+      alert('Error submitting test. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   React.useEffect(() => {
@@ -130,8 +149,7 @@ export default function ReadingPractice({ onNavigate }: ReadingPracticeProps) {
   };
 
   if (showResults) {
-    const correctAnswers = calculateScore();
-    const bandScore = getBandScore(correctAnswers, questions.length);
+    if (!results) return null;
 
     return (
       <div className="space-y-8">
@@ -148,8 +166,8 @@ export default function ReadingPractice({ onNavigate }: ReadingPracticeProps) {
         {/* Score Overview */}
         <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-8 text-white text-center">
           <h2 className="text-2xl font-semibold mb-2">Your Reading Band Score</h2>
-          <div className="text-6xl font-bold mb-4">{bandScore}</div>
-          <p className="text-green-100">{correctAnswers} out of {questions.length} questions correct</p>
+          <div className="text-6xl font-bold mb-4">{results.band_score}</div>
+          <p className="text-green-100">{results.score} out of {results.total_questions} questions correct</p>
         </div>
 
         {/* Detailed Results */}
@@ -284,11 +302,17 @@ export default function ReadingPractice({ onNavigate }: ReadingPracticeProps) {
 
           <button
             onClick={handleSubmit}
-            disabled={Object.keys(answers).length === 0}
-            className="w-full mt-6 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+            disabled={Object.keys(answers).length === 0 || loading}
+            className="w-full mt-6 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 min-h-[48px]"
           >
-            <span>Submit Test</span>
-            <ArrowRight size={16} />
+            {loading ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            ) : (
+              <>
+                <span>Submit Test</span>
+                <ArrowRight size={16} />
+              </>
+            )}
           </button>
         </div>
       </div>

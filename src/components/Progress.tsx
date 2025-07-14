@@ -1,5 +1,6 @@
 import React from 'react';
 import { TrendingUp, Calendar, Target, Award, BookOpen, Clock } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -8,6 +9,8 @@ interface ProgressProps {
 }
 
 export default function Progress({ onNavigate }: ProgressProps) {
+  const { user } = useAuth();
+  
   const progressData = [
     { date: '2024-01-15', writing: 6.5, reading: 7.0, speaking: 6.0, listening: 6.5 },
     { date: '2024-01-22', writing: 7.0, reading: 7.5, speaking: 6.5, listening: 7.0 },
@@ -19,10 +22,10 @@ export default function Progress({ onNavigate }: ProgressProps) {
   const overallScore = ((currentScores.writing + currentScores.reading + currentScores.speaking + currentScores.listening) / 4).toFixed(1);
 
   const studyStats = [
-    { label: 'Total Study Time', value: '36h 24m', icon: Clock, color: 'blue' },
-    { label: 'Tests Completed', value: '24', icon: BookOpen, color: 'green' },
-    { label: 'Current Streak', value: '7 days', icon: TrendingUp, color: 'purple' },
-    { label: 'Target Score', value: '8.0', icon: Target, color: 'orange' }
+    { label: 'Total Study Time', value: `${Math.floor(user?.profile?.total_study_hours || 0)}h ${Math.round(((user?.profile?.total_study_hours || 0) % 1) * 60)}m`, icon: Clock, color: 'blue' },
+    { label: 'Tests Completed', value: (user?.profile?.tests_completed || 0).toString(), icon: BookOpen, color: 'green' },
+    { label: 'Current Streak', value: `${user?.profile?.current_streak || 0} days`, icon: TrendingUp, color: 'purple' },
+    { label: 'Target Score', value: (user?.profile?.target_score || 8.0).toString(), icon: Target, color: 'orange' }
   ];
 
   const achievements = [

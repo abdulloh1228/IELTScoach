@@ -1,5 +1,6 @@
 import React from 'react';
 import { PenTool, BookOpen, Mic, Headphones, TrendingUp, Clock, Target, Award } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -8,6 +9,12 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
+  const { user } = useAuth();
+  const userName = user?.profile?.full_name?.split(' ')[0] || 'Student';
+  const targetScore = user?.profile?.target_score || 8.0;
+  const currentScore = user?.profile?.current_score || 7.2;
+  const testsCompleted = user?.profile?.tests_completed || 24;
+
   const recentScores = [
     { section: 'Writing', score: 7.5, date: '2 days ago' },
     { section: 'Reading', score: 8.0, date: '5 days ago' },
@@ -25,31 +32,34 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     <div className="space-y-8">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-blue-600 to-teal-600 rounded-2xl p-8 text-white">
-        <h1 className="text-3xl font-bold mb-2">Welcome back, Sarah! 👋</h1>
+        <h1 className="text-3xl font-bold mb-2">Welcome back, {userName}! 👋</h1>
         <p className="text-blue-100 mb-6">Ready to boost your IELTS score today?</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
             <div className="flex items-center space-x-2">
               <Target className="text-white" size={20} />
-              <span className="font-semibold">Target: 8.0</span>
+              <span className="font-semibold">Target: {targetScore}</span>
             </div>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
             <div className="flex items-center space-x-2">
               <Award className="text-white" size={20} />
-              <span className="font-semibold">Current: 7.2</span>
+              <span className="font-semibold">Current: {currentScore}</span>
             </div>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
             <div className="flex items-center space-x-2">
               <TrendingUp className="text-white" size={20} />
-              <span className="font-semibold">Progress: +0.5</span>
+              <span className="font-semibold">Progress: +{(currentScore - 6.5).toFixed(1)}</span>
             </div>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
             <div className="flex items-center space-x-2">
               <Clock className="text-white" size={20} />
-              <span className="font-semibold">15 days left</span>
+              <span className="font-semibold">{user?.profile?.exam_date ? 
+                Math.ceil((new Date(user.profile.exam_date).getTime() - new Date().getTime()) / (1000 * 3600 * 24)) + ' days left' : 
+                'Set exam date'
+              }</span>
             </div>
           </div>
         </div>

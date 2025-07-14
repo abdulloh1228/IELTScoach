@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, User, BarChart3, Settings } from 'lucide-react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import AuthModal from './components/AuthModal';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import ExamSelector from './components/ExamSelector';
@@ -12,8 +14,57 @@ import Profile from './components/Profile';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
-function App() {
+function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <Header onNavigate={setCurrentPage} onAuthClick={() => setShowAuthModal(true)} />
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center max-w-4xl mx-auto">
+            <h1 className="text-5xl font-bold text-gray-900 mb-6">
+              Master IELTS with AI-Powered Preparation
+            </h1>
+            <p className="text-xl text-gray-600 mb-8">
+              Get instant feedback, personalized study plans, and expert guidance to achieve your target IELTS score.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
+              >
+                Start Free Practice
+              </button>
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="border-2 border-blue-600 text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors font-semibold text-lg"
+              >
+                Sign In
+              </button>
+            </div>
+          </div>
+        </main>
+        <AuthModal 
+          isOpen={showAuthModal} 
+          onClose={() => setShowAuthModal(false)} 
+        />
+      </div>
+    );
+  }
 
   const renderPage = () => {
     switch (currentPage) {
@@ -40,7 +91,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Header onNavigate={setCurrentPage} />
+      <Header onNavigate={setCurrentPage} onAuthClick={() => setShowAuthModal(true)} />
       <main className="container mx-auto px-4 py-8">
         {renderPage()}
       </main>
@@ -78,7 +129,20 @@ function App() {
           </button>
         </div>
       </nav>
+      
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+      />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
