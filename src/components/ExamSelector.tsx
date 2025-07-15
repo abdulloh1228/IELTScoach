@@ -45,13 +45,13 @@ export default function ExamSelector({ onNavigate }: ExamSelectorProps) {
 
   const handleExamStart = (examType: string) => {
     switch (examType) {
-      case 'Writing Section Only':
+      case 'Writing':
         onNavigate('writing');
         break;
-      case 'Reading Section Only':
+      case 'Reading':
         onNavigate('reading');
         break;
-      case 'Speaking Practice':
+      case 'Speaking':
         onNavigate('speaking');
         break;
       default:
@@ -65,7 +65,7 @@ export default function ExamSelector({ onNavigate }: ExamSelectorProps) {
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Choose Your IELTS Practice</h1>
         <p className="text-gray-600 max-w-2xl mx-auto">
-          Select the type of practice that suits your needs. Get instant AI feedback and detailed analysis 
+          The IELTS test takes a total of 2 hours and 45 minutes. This includes the Listening, Reading, and Writing sections, which are completed in one sitting without breaks Get instant AI feedback and detailed analysis 
           to improve your performance in specific sections or take a complete mock exam.
         </p>
       </div>
