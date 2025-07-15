@@ -25,14 +25,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('AuthProvider: Starting auth check');
     // Get initial user
     authService.getCurrentUser().then(user => {
+      console.log('AuthProvider: Got user:', user);
       setUser(user);
+      setLoading(false);
+    }).catch(error => {
+      console.error('AuthProvider: Error getting user:', error);
+      setUser(null);
       setLoading(false);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = authService.onAuthStateChange((user) => {
+      console.log('AuthProvider: Auth state changed:', user);
       setUser(user);
       setLoading(false);
     });
