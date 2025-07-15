@@ -102,13 +102,7 @@ export default function ExamSelector({ onNavigate }: ExamSelectorProps) {
                 </div>
               </div>
               
-              <button 
-                onClick={() => handleExamStart(exam.title)}
-                className={`w-full bg-gradient-to-r ${exam.color} text-white py-3 px-6 rounded-lg font-semibold hover:opacity-90 transition-opacity flex items-center justify-center space-x-2 group-hover:scale-[1.02] transition-transform`}
-              >
-                <span>Start Practice</span>
-                <ArrowRight size={16} />
-              </button>
+              {/*there was GET AI feedback button*/}
             </div>
           </div>
         ))}
