@@ -65,8 +65,8 @@ export default function ExamSelector({ onNavigate }: ExamSelectorProps) {
       <div className="text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Choose Your IELTS Practice</h1>
         <p className="text-gray-600 max-w-2xl mx-auto">
-          The IELTS test takes a total of 2 hours and 45 minutes. This includes the Listening, Reading, and Writing sections, which are completed in one sitting without breaks Get <b>instant AI feedback</b> and detailed analysis 
-          to improve your performance in specific sections or take a complete mock exam.
+          The IELTS test takes a total of 2 hours and 45 minutes. This includes the Listening, Reading, and Writing sections, which are completed in one sitting without breaks. Get <b>instant AI feedback</b> and detailed analysis 
+          to improve your performance in specific sections.
         </p>
       </div>
 
