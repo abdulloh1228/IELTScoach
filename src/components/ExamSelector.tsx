@@ -12,7 +12,7 @@ export default function ExamSelector({ onNavigate }: ExamSelectorProps) {
     {
       title: 'Listening',
       duration: '30 minutes',
-      sections:,
+      sections: 4,
       difficulty: 'Academic',
       description: 'You will hear each recording only once and answer 40 questions based on them.',
       color: 'from-blue-500 to-purple-600'
