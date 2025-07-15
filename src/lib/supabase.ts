@@ -13,7 +13,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   // Don't throw error immediately, let it fail gracefully
 }
 
-
 // Database types
 export interface Profile {
   id: string;

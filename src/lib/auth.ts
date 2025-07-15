@@ -52,22 +52,30 @@ export const authService = {
 
   // Get current user
   async getCurrentUser(): Promise<AuthUser | null> {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) return null;
+    try {
+      console.log('Getting current user...');
+      const { data: { user } } = await supabase.auth.getUser();
+      console.log('Supabase user:', user);
+      
+      if (!user) return null;
 
-    // Get user profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+      // Get user profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    return {
-      id: user.id,
-      email: user.email!,
-      profile: profile || undefined,
-    };
+      console.log('User profile:', profile);
+      return {
+        id: user.id,
+        email: user.email!,
+        profile: profile || undefined,
+      };
+    } catch (error) {
+      console.error('Error getting current user:', error);
+      return null;
+    }
   },
 
   // Update profile
