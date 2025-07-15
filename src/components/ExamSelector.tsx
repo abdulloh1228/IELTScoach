@@ -102,7 +102,7 @@ export default function ExamSelector({ onNavigate }: ExamSelectorProps) {
                 </div>
               </div>
               
-              {/*there was GET AI feedback button*/}
+              
             </div>
           </div>
         ))}
