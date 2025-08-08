@@ -34,7 +34,7 @@ export const testService = {
   },
 
   // Submit writing essay
-  async submitWritingEssay(submission: Omit<WritingSubmission, 'id' | 'user_id' | 'created_at'>): Promise<WritingSubmission> {
+  async submitWritingEssay(submission: Omit<WritingSubmission, 'id' | 'user_id' | 'created_at' | 'word_count'>): Promise<WritingSubmission> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 

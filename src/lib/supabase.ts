@@ -44,8 +44,7 @@ export interface WritingSubmission {
   task_type: 'task1' | 'task2';
   prompt: string;
   content: string;
-  submission_type: 'typed' | 'uploaded';
-  file_url?: string;
+  submission_type: 'typed';
   word_count: number;
   band_score?: number;
   task_response?: number;
