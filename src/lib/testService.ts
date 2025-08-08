@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import type { TestSession, WritingSubmission, SpeakingRecording, ReadingResponse, ListeningResponse } from './supabase';
 
 export const testService = {
   // Create a new test session
