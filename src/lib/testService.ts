@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { aiService } from './aiService';
 
 export const testService = {
   // Create a new test session
@@ -41,8 +42,8 @@ export const testService = {
     // Calculate word count
     const wordCount = submission.content.split(/\s+/).filter(word => word.length > 0).length;
 
-    // Generate AI feedback (mock implementation)
-    const aiFeedback = await this.generateWritingFeedback(submission.content, submission.task_type);
+    // Generate real AI feedback
+    const aiFeedback = await aiService.analyzeWriting(submission.content, submission.task_type);
 
     const { data, error } = await supabase
       .from('writing_submissions')
@@ -50,7 +51,12 @@ export const testService = {
         ...submission,
         user_id: user.id,
         word_count: wordCount,
-        ...aiFeedback,
+        band_score: aiFeedback.band_score,
+        task_response: aiFeedback.task_response,
+        coherence_cohesion: aiFeedback.coherence_cohesion,
+        lexical_resource: aiFeedback.lexical_resource,
+        grammatical_range: aiFeedback.grammatical_range,
+        ai_feedback: aiFeedback.ai_feedback,
       })
       .select()
       .single();
@@ -60,19 +66,30 @@ export const testService = {
   },
 
   // Submit speaking recording
-  async submitSpeakingRecording(recording: Omit<SpeakingRecording, 'id' | 'user_id' | 'created_at'>): Promise<SpeakingRecording> {
+  async submitSpeakingRecording(recording: Omit<SpeakingRecording, 'id' | 'user_id' | 'created_at'>, transcript?: string): Promise<SpeakingRecording> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Generate AI feedback (mock implementation)
-    const aiFeedback = await this.generateSpeakingFeedback(recording.part_number);
+    // Generate real AI feedback if transcript is provided
+    let aiFeedback;
+    if (transcript) {
+      aiFeedback = await aiService.analyzeSpeaking(transcript, recording.part_number);
+    } else {
+      // Fallback to mock feedback if no transcript
+      aiFeedback = await this.generateSpeakingFeedback(recording.part_number);
+    }
 
     const { data, error } = await supabase
       .from('speaking_recordings')
       .insert({
         ...recording,
         user_id: user.id,
-        ...aiFeedback,
+        band_score: aiFeedback.band_score,
+        fluency_coherence: aiFeedback.fluency_coherence,
+        pronunciation: aiFeedback.pronunciation,
+        lexical_resource: aiFeedback.lexical_resource,
+        grammatical_range: aiFeedback.grammatical_range,
+        ai_feedback: aiFeedback.ai_feedback,
       })
       .select()
       .single();
@@ -159,41 +176,7 @@ export const testService = {
     return data || [];
   },
 
-  // Mock AI feedback generation for writing
-  async generateWritingFeedback(content: string, taskType: 'task1' | 'task2') {
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
-    const baseScore = Math.min(9, Math.max(4, 5 + (wordCount / 50)));
-
-    return {
-      band_score: Number((baseScore + Math.random() * 1.5).toFixed(1)),
-      task_response: Number((baseScore + Math.random() * 1).toFixed(1)),
-      coherence_cohesion: Number((baseScore + Math.random() * 1).toFixed(1)),
-      lexical_resource: Number((baseScore + Math.random() * 1).toFixed(1)),
-      grammatical_range: Number((baseScore + Math.random() * 1).toFixed(1)),
-      ai_feedback: {
-        strengths: [
-          "Good task achievement with clear position",
-          "Appropriate use of examples and explanations",
-          "Generally well-organized structure"
-        ],
-        improvements: [
-          "Consider using more varied cohesive devices",
-          "Expand vocabulary with more sophisticated synonyms",
-          "Work on complex sentence structures"
-        ],
-        suggestions: [
-          "Practice using conditional sentences",
-          "Learn more academic vocabulary",
-          "Focus on paragraph transitions"
-        ]
-      }
-    };
-  },
-
-  // Mock AI feedback generation for speaking
+  // Fallback mock AI feedback generation for speaking (when no transcript available)
   async generateSpeakingFeedback(partNumber: number) {
     // Simulate AI processing delay
     await new Promise(resolve => setTimeout(resolve, 1500));

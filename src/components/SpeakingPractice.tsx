@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Mic, Square, Play, RotateCcw, Volume2, Star } from 'lucide-react';
+import { testService } from '../lib/testService';
+import { progressService } from '../lib/progressService';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -12,6 +14,11 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
   const [isRecording, setIsRecording] = useState(false);
   const [hasRecording, setHasRecording] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<any>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 
   const speakingParts = {
     1: {
@@ -53,40 +60,98 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
 
   const handleRecord = () => {
     if (isRecording) {
-      setIsRecording(false);
-      setHasRecording(true);
+      // Stop recording
+      if (mediaRecorder) {
+        mediaRecorder.stop();
+      }
     } else {
-      setIsRecording(true);
-      setHasRecording(false);
+      // Start recording
+      startRecording();
     }
   };
 
-  const handleSubmit = () => {
-    setShowResults(true);
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+
+      recorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/wav' });
+        setAudioBlob(blob);
+        setHasRecording(true);
+        setIsRecording(false);
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setHasRecording(false);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      alert('Error accessing microphone. Please check permissions.');
+    }
   };
 
-  const mockResults = {
-    overallScore: 6.5,
-    fluency: 7.0,
-    pronunciation: 6.0,
-    lexical: 6.5,
-    grammar: 6.5,
-    feedback: [
-      "Good fluency with natural rhythm in most responses",
-      "Work on pronunciation of specific sounds (/th/, /r/)",
-      "Use more varied vocabulary and idiomatic expressions",
-      "Practice complex grammatical structures",
-      "Extend your answers with more detailed examples"
-    ]
+  const handleSubmit = async () => {
+    if (!transcript.trim()) {
+      alert('Please provide a transcript of your response for AI analysis.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create test session
+      const session = await testService.createTestSession('speaking');
+      
+      // Submit speaking recording with transcript
+      const submission = await testService.submitSpeakingRecording({
+        session_id: session.id,
+        part_number: currentPart,
+        question: speakingParts[currentPart as keyof typeof speakingParts].questions?.[0] || 
+                 speakingParts[currentPart as keyof typeof speakingParts].topic || 
+                 'Speaking practice question',
+        recording_url: audioBlob ? URL.createObjectURL(audioBlob) : undefined,
+        duration: 120, // Default 2 minutes
+      }, transcript);
+
+      setResults(submission);
+      setShowResults(true);
+      
+      // Update user stats
+      await progressService.incrementTestCompletion();
+      await progressService.addStudyTime(15);
+    } catch (error) {
+      console.error('Error submitting speaking test:', error);
+      alert('Error submitting speaking test. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const playRecording = () => {
+    if (audioBlob) {
+      const audio = new Audio(URL.createObjectURL(audioBlob));
+      audio.play();
+    }
   };
 
   if (showResults) {
+    if (!results) return null;
+
     return (
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900">Speaking Analysis Results</h1>
           <button 
-            onClick={() => setShowResults(false)}
+            onClick={() => {setShowResults(false); setTranscript(''); setHasRecording(false); setAudioBlob(null);}}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Practice Again
@@ -96,7 +161,7 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
         {/* Overall Score */}
         <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-8 text-white text-center">
           <h2 className="text-2xl font-semibold mb-2">Your Speaking Band Score</h2>
-          <div className="text-6xl font-bold mb-4">{mockResults.overallScore}</div>
+          <div className="text-6xl font-bold mb-4">{results.band_score}</div>
           <p className="text-purple-100">Great progress! Keep practicing to reach your target.</p>
         </div>
 
@@ -106,10 +171,10 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Detailed Scores</h3>
             <div className="space-y-4">
               {[
-                { criteria: 'Fluency & Coherence', score: mockResults.fluency },
-                { criteria: 'Pronunciation', score: mockResults.pronunciation },
-                { criteria: 'Lexical Resource', score: mockResults.lexical },
-                { criteria: 'Grammatical Range', score: mockResults.grammar }
+                { criteria: 'Fluency & Coherence', score: results.fluency_coherence },
+                { criteria: 'Pronunciation', score: results.pronunciation },
+                { criteria: 'Lexical Resource', score: results.lexical_resource },
+                { criteria: 'Grammatical Range', score: results.grammatical_range }
               ].map((item, index) => (
                 <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <span className="font-medium text-gray-800">{item.criteria}</span>
@@ -130,7 +195,7 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
             <h3 className="text-xl font-semibold text-gray-900 mb-4">AI Feedback</h3>
             <div className="space-y-3">
-              {mockResults.feedback.map((tip, index) => (
+              {results.ai_feedback.improvements?.map((tip: string, index: number) => (
                 <div key={index} className="flex items-start space-x-3 p-3 bg-purple-50 rounded-lg">
                   <div className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
                     {index + 1}
@@ -270,11 +335,13 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
             {hasRecording && (
               <div className="flex justify-center space-x-4 mb-4">
                 <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                  <Play size={16} />
+                  onClick={playRecording}
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                >
                   <span>Play Recording</span>
                 </button>
                 <button 
-                  onClick={() => {setHasRecording(false); setIsRecording(false);}}
+                  onClick={() => {setHasRecording(false); setIsRecording(false); setAudioBlob(null); setTranscript('');}}
                   className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
                 >
                   <RotateCcw size={16} />
@@ -284,11 +351,33 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
             )}
 
             {hasRecording && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Transcript (for AI analysis):
+                </label>
+                <textarea
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                  placeholder="Please type what you said for accurate AI feedback..."
+                  className="w-full h-24 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                />
+              </div>
+            )}
+
+            {hasRecording && (
               <button
                 onClick={handleSubmit}
-                className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold"
+                disabled={loading || !transcript.trim()}
+                className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 min-w-[200px]"
               >
-                Get AI Analysis
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Analyzing...</span>
+                  </>
+                ) : (
+                  <span>Get AI Analysis</span>
+                )}
               </button>
             )}
           </div>

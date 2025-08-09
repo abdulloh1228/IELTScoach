@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import type { Profile } from './supabase';
+import { aiService } from './aiService';
 
 export interface ProgressData {
   overallScore: number;
@@ -195,30 +196,34 @@ export const progressService = {
   },
 
   generateRecommendations(weakAreas: string[]): string[] {
-    const recommendations = [];
+    // Try to get AI-generated recommendations
+    return aiService.generateStudyTips(weakAreas, 6.5).catch(() => {
+      // Fallback to static recommendations
+      const recommendations = [];
 
-    if (weakAreas.includes('Writing')) {
-      recommendations.push('Practice essay structure and coherence');
-      recommendations.push('Expand academic vocabulary');
-    }
-    if (weakAreas.includes('Speaking')) {
-      recommendations.push('Record daily speaking practice');
-      recommendations.push('Work on pronunciation and fluency');
-    }
-    if (weakAreas.includes('Reading')) {
-      recommendations.push('Practice skimming and scanning techniques');
-      recommendations.push('Build reading speed and comprehension');
-    }
-    if (weakAreas.includes('Listening')) {
-      recommendations.push('Listen to various English accents daily');
-      recommendations.push('Practice note-taking while listening');
-    }
+      if (weakAreas.includes('Writing')) {
+        recommendations.push('Practice essay structure and coherence');
+        recommendations.push('Expand academic vocabulary');
+      }
+      if (weakAreas.includes('Speaking')) {
+        recommendations.push('Record daily speaking practice');
+        recommendations.push('Work on pronunciation and fluency');
+      }
+      if (weakAreas.includes('Reading')) {
+        recommendations.push('Practice skimming and scanning techniques');
+        recommendations.push('Build reading speed and comprehension');
+      }
+      if (weakAreas.includes('Listening')) {
+        recommendations.push('Listen to various English accents daily');
+        recommendations.push('Practice note-taking while listening');
+      }
 
-    if (recommendations.length === 0) {
-      recommendations.push('Continue practicing all sections regularly');
-      recommendations.push('Take full mock exams weekly');
-    }
+      if (recommendations.length === 0) {
+        recommendations.push('Continue practicing all sections regularly');
+        recommendations.push('Take full mock exams weekly');
+      }
 
-    return recommendations;
+      return recommendations;
+    });
   },
 };

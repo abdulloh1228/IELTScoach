@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Send, Clock, FileText, User, Lightbulb } from 'lucide-react';
 import { testService } from '../lib/testService';
 import { progressService } from '../lib/progressService';
+import { aiService } from '../lib/aiService';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -121,17 +122,7 @@ export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
         </div>
 
         {/* Enhanced Version */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">AI-Enhanced Version (Band 8+)</h3>
-          <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-green-500">
-            <p className="text-gray-700 italic">
-              Based on your essay, here are the key improvements that would elevate your score to Band 8+...
-            </p>
-            <button className="mt-4 text-green-600 hover:text-green-700 font-medium">
-              View Complete Enhanced Essay →
-            </button>
-          </div>
-        </div>
+        <EnhancedEssaySection originalEssay={essay} taskType={selectedTask} />
 
         {/* Human Feedback Option */}
         <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
@@ -259,6 +250,80 @@ export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Enhanced Essay Component
+function EnhancedEssaySection({ originalEssay, taskType }: { originalEssay: string, taskType: 'task1' | 'task2' }) {
+  const [enhancedEssay, setEnhancedEssay] = useState<string>('');
+  const [loading, setLoading] = useState(false);
+  const [showEnhanced, setShowEnhanced] = useState(false);
+
+  const generateEnhanced = async () => {
+    setLoading(true);
+    try {
+      const enhanced = await aiService.generateEnhancedEssay(originalEssay, taskType);
+      setEnhancedEssay(enhanced);
+      setShowEnhanced(true);
+    } catch (error) {
+      console.error('Error generating enhanced essay:', error);
+      alert('Error generating enhanced version. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+      <h3 className="text-xl font-semibold text-gray-900 mb-4">AI-Enhanced Version (Band 8+)</h3>
+      
+      {!showEnhanced ? (
+        <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-green-500">
+          <p className="text-gray-700 mb-4">
+            Get an AI-enhanced version of your essay that demonstrates Band 8+ writing techniques, 
+            vocabulary, and structure while maintaining your original ideas.
+          </p>
+          <button 
+            onClick={generateEnhanced}
+            disabled={loading}
+            className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 flex items-center space-x-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <span>Generating Enhanced Version...</span>
+              </>
+            ) : (
+              <span>Generate Enhanced Essay</span>
+            )}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+            <h4 className="font-semibold text-green-800 mb-2">Enhanced Version:</h4>
+            <div className="text-gray-700 whitespace-pre-line leading-relaxed">
+              {enhancedEssay}
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => setShowEnhanced(false)}
+              className="text-green-600 hover:text-green-700 font-medium"
+            >
+              ← Back to Results
+            </button>
+            <button 
+              onClick={generateEnhanced}
+              disabled={loading}
+              className="text-green-600 hover:text-green-700 font-medium"
+            >
+              Generate New Version
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

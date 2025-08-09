@@ -1,6 +1,7 @@
 import React from 'react';
 import { PenTool, BookOpen, Mic, Headphones, TrendingUp, Clock, Target, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { aiService } from '../lib/aiService';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -10,6 +11,12 @@ interface DashboardProps {
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const { user } = useAuth();
+  const [dailyTips, setDailyTips] = React.useState<string[]>([
+    "Practice using complex sentences with subordinating conjunctions",
+    "Expand your vocabulary with academic word lists",
+    "Record yourself speaking to improve fluency and pronunciation"
+  ]);
+
   const userName = user?.profile?.full_name?.split(' ')[0] || 'Student';
   const targetScore = user?.profile?.target_score || 8.0;
   const currentScore = user?.profile?.current_score || 7.2;
@@ -22,11 +29,26 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     { section: 'Listening', score: 7.0, date: '1 week ago' },
   ];
 
-  const dailyTips = [
-    "Practice using complex sentences with subordinating conjunctions",
-    "Expand your vocabulary with academic word lists",
-    "Record yourself speaking to improve fluency and pronunciation"
-  ];
+  // Generate AI-powered daily tips
+  React.useEffect(() => {
+    const generateAITips = async () => {
+      try {
+        const weakAreas = recentScores
+          .filter(score => score.score < 7.0)
+          .map(score => score.section);
+        
+        if (weakAreas.length > 0) {
+          const aiTips = await aiService.generateStudyTips(weakAreas, currentScore);
+          setDailyTips(aiTips.slice(0, 3));
+        }
+      } catch (error) {
+        console.error('Error generating AI tips:', error);
+        // Keep default tips if AI fails
+      }
+    };
+
+    generateAITips();
+  }, [currentScore]);
 
   return (
     <div className="space-y-8">
