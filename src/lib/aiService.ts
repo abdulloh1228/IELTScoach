@@ -34,10 +34,21 @@ export const aiService = {
   // Analyze writing essay with Gemini AI
   async analyzeWriting(content: string, taskType: 'task1' | 'task2'): Promise<WritingFeedback> {
     try {
+      if (!import.meta.env.VITE_GEMINI_API_KEY) {
+        console.warn('Gemini API key not found, using mock data');
+        return this.getMockWritingFeedback(content, taskType);
+      }
+
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const prompt = this.getWritingPrompt(content, taskType);
       
-      const result = await model.generateContent(prompt);
+      const result = await Promise.race([
+        model.generateContent(prompt),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 30000)
+        )
+      ]) as any;
+      
       const response = await result.response;
       const analysis = response.text();
 
@@ -54,10 +65,21 @@ export const aiService = {
   // Analyze speaking with Gemini AI (text-based for now)
   async analyzeSpeaking(transcript: string, partNumber: number): Promise<SpeakingFeedback> {
     try {
+      if (!import.meta.env.VITE_GEMINI_API_KEY) {
+        console.warn('Gemini API key not found, using mock data');
+        return this.getMockSpeakingFeedback(partNumber);
+      }
+
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const prompt = this.getSpeakingPrompt(transcript, partNumber);
       
-      const result = await model.generateContent(prompt);
+      const result = await Promise.race([
+        model.generateContent(prompt),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 30000)
+        )
+      ]) as any;
+      
       const response = await result.response;
       const analysis = response.text();
 
@@ -73,10 +95,20 @@ export const aiService = {
   // Generate personalized study tips
   async generateStudyTips(weakAreas: string[], currentLevel: number): Promise<string[]> {
     try {
+      if (!import.meta.env.VITE_GEMINI_API_KEY) {
+        return this.getDefaultStudyTips();
+      }
+
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const prompt = `Based on these weak areas: ${weakAreas.join(', ')} and current IELTS level: ${currentLevel}, provide 5 specific, actionable study tips for improvement. Focus on practical exercises and strategies. Format as a numbered list.`;
       
-      const result = await model.generateContent(prompt);
+      const result = await Promise.race([
+        model.generateContent(prompt),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 15000)
+        )
+      ]) as any;
+      
       const response = await result.response;
       const tips = response.text();
 
@@ -99,6 +131,10 @@ export const aiService = {
   // Generate enhanced essay version
   async generateEnhancedEssay(originalEssay: string, taskType: 'task1' | 'task2'): Promise<string> {
     try {
+      if (!import.meta.env.VITE_GEMINI_API_KEY) {
+        return "Enhanced version requires Gemini API key. Please configure your API key to use this feature.";
+      }
+
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
       const prompt = `Enhance this IELTS ${taskType} essay to Band 8+ level while maintaining the original ideas. Focus on:
 1. More sophisticated vocabulary
@@ -111,7 +147,13 @@ ${originalEssay}
 
 Provide the enhanced version with clear improvements:`;
 
-      const result = await model.generateContent(prompt);
+      const result = await Promise.race([
+        model.generateContent(prompt),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 45000)
+        )
+      ]) as any;
+      
       const response = await result.response;
       const enhancedEssay = response.text();
 

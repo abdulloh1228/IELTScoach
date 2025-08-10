@@ -47,7 +47,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       }
     };
 
-    generateAITips();
+    // Add a small delay to prevent immediate loading
+    const timer = setTimeout(generateAITips, 1000);
+    return () => clearTimeout(timer);
   }, [currentScore]);
 
   return (
