@@ -51,7 +51,7 @@ Create a `.env` file in the root directory:
 ```env
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_OPENAI_API_KEY=your_openai_api_key
+VITE_GEMINI_API_KEY=your_gemini_api_key
 ```
 
 ### 3. Supabase Setup
@@ -60,8 +60,8 @@ VITE_OPENAI_API_KEY=your_openai_api_key
 3. Configure authentication settings
 4. Update environment variables
 
-### 4. OpenAI Setup
-1. Create an OpenAI account
+### 4. Google Gemini Setup
+1. Go to Google AI Studio (https://makersuite.google.com/app/apikey)
 2. Generate an API key
 3. Add the key to your environment variables
 
@@ -84,14 +84,14 @@ The platform uses a comprehensive database schema including:
 ## AI Integration
 
 ### Writing Analysis
-- Analyzes essays using GPT-4
+- Analyzes essays using Google Gemini AI
 - Provides band scores for all four criteria
 - Generates detailed feedback and suggestions
 - Creates enhanced versions for learning
 
 ### Speaking Analysis
 - Processes speech transcripts
-- Evaluates fluency, pronunciation, vocabulary, and grammar
+- Uses Gemini AI to evaluate fluency, pronunciation, vocabulary, and grammar
 - Provides targeted improvement suggestions
 
 ### Personalized Recommendations
@@ -109,7 +109,7 @@ The platform uses a comprehensive database schema including:
 ## Production Considerations
 
 ### Security
-- Move OpenAI API calls to backend/edge functions
+- Move Gemini API calls to backend/edge functions
 - Implement rate limiting
 - Add input validation and sanitization
 

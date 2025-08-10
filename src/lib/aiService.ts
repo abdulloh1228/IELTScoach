@@ -1,9 +1,6 @@
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true // Only for demo - use backend in production
-});
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 export interface WritingFeedback {
   band_score: number;
@@ -34,65 +31,41 @@ export interface SpeakingFeedback {
 }
 
 export const aiService = {
-  // Analyze writing essay with AI
+  // Analyze writing essay with Gemini AI
   async analyzeWriting(content: string, taskType: 'task1' | 'task2'): Promise<WritingFeedback> {
     try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const prompt = this.getWritingPrompt(content, taskType);
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert IELTS examiner with 15+ years of experience. Analyze writing tasks according to official IELTS criteria and provide detailed, constructive feedback."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 1500
-      });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const analysis = response.text();
 
-      const analysis = response.choices[0]?.message?.content;
       if (!analysis) throw new Error('No analysis received');
 
       return this.parseWritingFeedback(analysis, content);
     } catch (error) {
-      console.error('AI Writing Analysis Error:', error);
+      console.error('Gemini Writing Analysis Error:', error);
       // Fallback to mock data if AI fails
       return this.getMockWritingFeedback(content, taskType);
     }
   },
 
-  // Analyze speaking with AI (text-based for now)
+  // Analyze speaking with Gemini AI (text-based for now)
   async analyzeSpeaking(transcript: string, partNumber: number): Promise<SpeakingFeedback> {
     try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const prompt = this.getSpeakingPrompt(transcript, partNumber);
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert IELTS speaking examiner. Analyze speaking responses based on fluency, pronunciation patterns in text, lexical resource, and grammatical range."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 1200
-      });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const analysis = response.text();
 
-      const analysis = response.choices[0]?.message?.content;
       if (!analysis) throw new Error('No analysis received');
 
       return this.parseSpeakingFeedback(analysis);
     } catch (error) {
-      console.error('AI Speaking Analysis Error:', error);
+      console.error('Gemini Speaking Analysis Error:', error);
       return this.getMockSpeakingFeedback(partNumber);
     }
   },
@@ -100,30 +73,25 @@ export const aiService = {
   // Generate personalized study tips
   async generateStudyTips(weakAreas: string[], currentLevel: number): Promise<string[]> {
     try {
-      const prompt = `Based on these weak areas: ${weakAreas.join(', ')} and current IELTS level: ${currentLevel}, provide 5 specific, actionable study tips for improvement. Focus on practical exercises and strategies.`;
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const prompt = `Based on these weak areas: ${weakAreas.join(', ')} and current IELTS level: ${currentLevel}, provide 5 specific, actionable study tips for improvement. Focus on practical exercises and strategies. Format as a numbered list.`;
       
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: "You are an IELTS preparation expert. Provide specific, actionable study tips."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.4,
-        max_tokens: 800
-      });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const tips = response.text();
 
-      const tips = response.choices[0]?.message?.content;
       if (!tips) return this.getDefaultStudyTips();
 
-      return tips.split('\n').filter(tip => tip.trim().length > 0).slice(0, 5);
+      // Parse the numbered list into an array
+      const tipsList = tips.split('\n')
+        .filter(tip => tip.trim().length > 0)
+        .map(tip => tip.replace(/^\d+\.\s*/, '').trim())
+        .filter(tip => tip.length > 0)
+        .slice(0, 5);
+
+      return tipsList.length > 0 ? tipsList : this.getDefaultStudyTips();
     } catch (error) {
-      console.error('AI Study Tips Error:', error);
+      console.error('Gemini Study Tips Error:', error);
       return this.getDefaultStudyTips();
     }
   },
@@ -131,6 +99,7 @@ export const aiService = {
   // Generate enhanced essay version
   async generateEnhancedEssay(originalEssay: string, taskType: 'task1' | 'task2'): Promise<string> {
     try {
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
       const prompt = `Enhance this IELTS ${taskType} essay to Band 8+ level while maintaining the original ideas. Focus on:
 1. More sophisticated vocabulary
 2. Complex sentence structures
@@ -140,27 +109,15 @@ export const aiService = {
 Original essay:
 ${originalEssay}
 
-Provide the enhanced version:`;
+Provide the enhanced version with clear improvements:`;
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert IELTS writing instructor. Enhance essays to Band 8+ level while preserving the student's original ideas and voice."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000
-      });
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const enhancedEssay = response.text();
 
-      return response.choices[0]?.message?.content || "Enhanced version temporarily unavailable.";
+      return enhancedEssay || "Enhanced version temporarily unavailable. Please try again later.";
     } catch (error) {
-      console.error('AI Essay Enhancement Error:', error);
+      console.error('Gemini Essay Enhancement Error:', error);
       return "Enhanced version temporarily unavailable. Please try again later.";
     }
   },
@@ -169,24 +126,12 @@ Provide the enhanced version:`;
   getWritingPrompt(content: string, taskType: 'task1' | 'task2'): string {
     const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
     
-    return `Analyze this IELTS ${taskType} essay and provide detailed feedback:
+    return `You are an expert IELTS examiner with 15+ years of experience. Analyze this IELTS ${taskType} essay and provide detailed feedback according to official IELTS criteria.
 
 Essay (${wordCount} words):
 ${content}
 
-Please provide:
-1. Overall band score (1-9)
-2. Individual scores for:
-   - Task Response/Achievement (1-9)
-   - Coherence and Cohesion (1-9)
-   - Lexical Resource (1-9)
-   - Grammatical Range and Accuracy (1-9)
-3. Three main strengths
-4. Three key areas for improvement
-5. Three specific suggestions for practice
-6. Detailed analysis paragraph
-
-Format your response as JSON with this structure:
+Please provide your analysis in the following JSON format:
 {
   "band_score": 7.0,
   "task_response": 7.0,
@@ -197,16 +142,39 @@ Format your response as JSON with this structure:
   "improvements": ["improvement1", "improvement2", "improvement3"],
   "suggestions": ["suggestion1", "suggestion2", "suggestion3"],
   "detailed_analysis": "comprehensive analysis paragraph"
-}`;
+}
+
+Provide:
+1. Overall band score (1-9)
+2. Individual scores for each criterion (1-9)
+3. Three main strengths
+4. Three key areas for improvement
+5. Three specific suggestions for practice
+6. Detailed analysis paragraph
+
+Be constructive and specific in your feedback.`;
   },
 
   getSpeakingPrompt(transcript: string, partNumber: number): string {
-    return `Analyze this IELTS Speaking Part ${partNumber} response:
+    return `You are an expert IELTS speaking examiner. Analyze this IELTS Speaking Part ${partNumber} response based on official IELTS criteria.
 
 Transcript:
 ${transcript}
 
-Provide detailed feedback on:
+Provide detailed feedback in JSON format:
+{
+  "band_score": 7.0,
+  "fluency_coherence": 7.0,
+  "pronunciation": 6.5,
+  "lexical_resource": 7.0,
+  "grammatical_range": 6.5,
+  "strengths": ["strength1", "strength2", "strength3"],
+  "improvements": ["improvement1", "improvement2", "improvement3"],
+  "suggestions": ["suggestion1", "suggestion2", "suggestion3"],
+  "detailed_analysis": "comprehensive analysis paragraph"
+}
+
+Evaluate:
 1. Overall band score (1-9)
 2. Individual scores for:
    - Fluency and Coherence (1-9)
@@ -218,49 +186,63 @@ Provide detailed feedback on:
 5. Three practice suggestions
 6. Detailed analysis
 
-Format as JSON similar to writing feedback.`;
+Be specific and constructive in your feedback.`;
   },
 
   parseWritingFeedback(analysis: string, content: string): WritingFeedback {
     try {
-      const parsed = JSON.parse(analysis);
-      return {
-        band_score: parsed.band_score || 6.0,
-        task_response: parsed.task_response || 6.0,
-        coherence_cohesion: parsed.coherence_cohesion || 6.0,
-        lexical_resource: parsed.lexical_resource || 6.0,
-        grammatical_range: parsed.grammatical_range || 6.0,
-        ai_feedback: {
-          strengths: parsed.strengths || ["Good attempt at the task"],
-          improvements: parsed.improvements || ["Work on sentence variety"],
-          suggestions: parsed.suggestions || ["Practice more complex structures"],
-          detailed_analysis: parsed.detailed_analysis || "Keep practicing to improve your writing skills."
-        }
-      };
+      // Try to extract JSON from the response
+      const jsonMatch = analysis.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          band_score: parsed.band_score || 6.0,
+          task_response: parsed.task_response || 6.0,
+          coherence_cohesion: parsed.coherence_cohesion || 6.0,
+          lexical_resource: parsed.lexical_resource || 6.0,
+          grammatical_range: parsed.grammatical_range || 6.0,
+          ai_feedback: {
+            strengths: parsed.strengths || ["Good attempt at the task"],
+            improvements: parsed.improvements || ["Work on sentence variety"],
+            suggestions: parsed.suggestions || ["Practice more complex structures"],
+            detailed_analysis: parsed.detailed_analysis || "Keep practicing to improve your writing skills."
+          }
+        };
+      }
     } catch (error) {
-      return this.getMockWritingFeedback(content, 'task1');
+      console.error('Error parsing Gemini response:', error);
     }
+    
+    // Fallback to mock data if parsing fails
+    return this.getMockWritingFeedback(content, 'task1');
   },
 
   parseSpeakingFeedback(analysis: string): SpeakingFeedback {
     try {
-      const parsed = JSON.parse(analysis);
-      return {
-        band_score: parsed.band_score || 6.0,
-        fluency_coherence: parsed.fluency_coherence || 6.0,
-        pronunciation: parsed.pronunciation || 6.0,
-        lexical_resource: parsed.lexical_resource || 6.0,
-        grammatical_range: parsed.grammatical_range || 6.0,
-        ai_feedback: {
-          strengths: parsed.strengths || ["Good attempt"],
-          improvements: parsed.improvements || ["Work on fluency"],
-          suggestions: parsed.suggestions || ["Practice daily"],
-          detailed_analysis: parsed.detailed_analysis || "Keep practicing speaking."
-        }
-      };
+      // Try to extract JSON from the response
+      const jsonMatch = analysis.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          band_score: parsed.band_score || 6.0,
+          fluency_coherence: parsed.fluency_coherence || 6.0,
+          pronunciation: parsed.pronunciation || 6.0,
+          lexical_resource: parsed.lexical_resource || 6.0,
+          grammatical_range: parsed.grammatical_range || 6.0,
+          ai_feedback: {
+            strengths: parsed.strengths || ["Good attempt"],
+            improvements: parsed.improvements || ["Work on fluency"],
+            suggestions: parsed.suggestions || ["Practice daily"],
+            detailed_analysis: parsed.detailed_analysis || "Keep practicing speaking."
+          }
+        };
+      }
     } catch (error) {
-      return this.getMockSpeakingFeedback(1);
+      console.error('Error parsing Gemini response:', error);
     }
+    
+    // Fallback to mock data if parsing fails
+    return this.getMockSpeakingFeedback(1);
   },
 
   // Fallback mock data
