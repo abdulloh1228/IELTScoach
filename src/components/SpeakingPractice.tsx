@@ -334,10 +334,11 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
 
             {hasRecording && (
               <div className="flex justify-center space-x-4 mb-4">
-                <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                <button 
                   onClick={playRecording}
                   className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                 >
+                  <Volume2 size={16} />
                   <span>Play Recording</span>
                 </button>
                 <button 
