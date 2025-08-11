@@ -129,10 +129,8 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
       await progressService.incrementTestCompletion();
       await progressService.addStudyTime(15);
     } catch (error) {
-      console.error('Error submitting speaking test:', error);
-      // Show user-friendly error message
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Error submitting speaking test: ${errorMessage}. Please try again.`);
+      console.log('Speaking submission error:', error);
+      alert('Error submitting speaking test. Please try again.');
     } finally {
       setLoading(false);
     }

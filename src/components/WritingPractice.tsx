@@ -47,10 +47,8 @@ export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
       await progressService.incrementTestCompletion();
       await progressService.addStudyTime(selectedTask === 'task1' ? 20 : 40);
     } catch (error) {
-      console.error('Error submitting essay:', error);
-      // Show user-friendly error message
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Error submitting essay: ${errorMessage}. Please try again.`);
+      console.log('Submission error:', error);
+      alert('Error submitting essay. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }

@@ -42,14 +42,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           setDailyTips(aiTips.slice(0, 3));
         }
       } catch (error) {
-        console.error('Error generating AI tips:', error);
+        console.log('Using default tips');
         // Keep default tips if AI fails
       }
     };
 
-    // Add a small delay to prevent immediate loading
-    const timer = setTimeout(generateAITips, 1000);
-    return () => clearTimeout(timer);
+    // Only generate AI tips if user has been active
+    if (user?.profile?.tests_completed && user.profile.tests_completed > 0) {
+      const timer = setTimeout(generateAITips, 2000);
+      return () => clearTimeout(timer);
+    }
   }, [currentScore]);
 
   return (

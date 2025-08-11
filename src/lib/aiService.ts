@@ -35,28 +35,33 @@ export const aiService = {
   async analyzeWriting(content: string, taskType: 'task1' | 'task2'): Promise<WritingFeedback> {
     try {
       if (!import.meta.env.VITE_GEMINI_API_KEY) {
-        console.warn('Gemini API key not found, using mock data');
+        console.log('Gemini API key not found, using mock data');
         return this.getMockWritingFeedback(content, taskType);
       }
 
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const prompt = this.getWritingPrompt(content, taskType);
       
-      const result = await Promise.race([
-        model.generateContent(prompt),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 30000)
-        )
-      ]) as any;
+      // Set a shorter timeout and add abort controller
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       
-      const response = await result.response;
-      const analysis = response.text();
+      try {
+        const result = await model.generateContent(prompt);
+        clearTimeout(timeoutId);
+        
+        const response = await result.response;
+        const analysis = response.text();
 
-      if (!analysis) throw new Error('No analysis received');
+        if (!analysis) throw new Error('No analysis received');
 
-      return this.parseWritingFeedback(analysis, content);
+        return this.parseWritingFeedback(analysis, content);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
     } catch (error) {
-      console.error('Gemini Writing Analysis Error:', error);
+      console.log('Using mock data due to:', error instanceof Error ? error.message : 'Unknown error');
       // Fallback to mock data if AI fails
       return this.getMockWritingFeedback(content, taskType);
     }
@@ -66,28 +71,32 @@ export const aiService = {
   async analyzeSpeaking(transcript: string, partNumber: number): Promise<SpeakingFeedback> {
     try {
       if (!import.meta.env.VITE_GEMINI_API_KEY) {
-        console.warn('Gemini API key not found, using mock data');
+        console.log('Gemini API key not found, using mock data');
         return this.getMockSpeakingFeedback(partNumber);
       }
 
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const prompt = this.getSpeakingPrompt(transcript, partNumber);
       
-      const result = await Promise.race([
-        model.generateContent(prompt),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 30000)
-        )
-      ]) as any;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       
-      const response = await result.response;
-      const analysis = response.text();
+      try {
+        const result = await model.generateContent(prompt);
+        clearTimeout(timeoutId);
+        
+        const response = await result.response;
+        const analysis = response.text();
 
-      if (!analysis) throw new Error('No analysis received');
+        if (!analysis) throw new Error('No analysis received');
 
-      return this.parseSpeakingFeedback(analysis);
+        return this.parseSpeakingFeedback(analysis);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
     } catch (error) {
-      console.error('Gemini Speaking Analysis Error:', error);
+      console.log('Using mock data due to:', error instanceof Error ? error.message : 'Unknown error');
       return this.getMockSpeakingFeedback(partNumber);
     }
   },
@@ -102,28 +111,32 @@ export const aiService = {
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       const prompt = `Based on these weak areas: ${weakAreas.join(', ')} and current IELTS level: ${currentLevel}, provide 5 specific, actionable study tips for improvement. Focus on practical exercises and strategies. Format as a numbered list.`;
       
-      const result = await Promise.race([
-        model.generateContent(prompt),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 15000)
-        )
-      ]) as any;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       
-      const response = await result.response;
-      const tips = response.text();
+      try {
+        const result = await model.generateContent(prompt);
+        clearTimeout(timeoutId);
+        
+        const response = await result.response;
+        const tips = response.text();
 
-      if (!tips) return this.getDefaultStudyTips();
+        if (!tips) return this.getDefaultStudyTips();
 
-      // Parse the numbered list into an array
-      const tipsList = tips.split('\n')
-        .filter(tip => tip.trim().length > 0)
-        .map(tip => tip.replace(/^\d+\.\s*/, '').trim())
-        .filter(tip => tip.length > 0)
-        .slice(0, 5);
+        // Parse the numbered list into an array
+        const tipsList = tips.split('\n')
+          .filter(tip => tip.trim().length > 0)
+          .map(tip => tip.replace(/^\d+\.\s*/, '').trim())
+          .filter(tip => tip.length > 0)
+          .slice(0, 5);
 
-      return tipsList.length > 0 ? tipsList : this.getDefaultStudyTips();
+        return tipsList.length > 0 ? tipsList : this.getDefaultStudyTips();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
     } catch (error) {
-      console.error('Gemini Study Tips Error:', error);
+      console.log('Using default tips due to:', error instanceof Error ? error.message : 'Unknown error');
       return this.getDefaultStudyTips();
     }
   },
@@ -147,19 +160,23 @@ ${originalEssay}
 
 Provide the enhanced version with clear improvements:`;
 
-      const result = await Promise.race([
-        model.generateContent(prompt),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 45000)
-        )
-      ]) as any;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
       
-      const response = await result.response;
-      const enhancedEssay = response.text();
+      try {
+        const result = await model.generateContent(prompt);
+        clearTimeout(timeoutId);
+        
+        const response = await result.response;
+        const enhancedEssay = response.text();
 
-      return enhancedEssay || "Enhanced version temporarily unavailable. Please try again later.";
+        return enhancedEssay || "Enhanced version temporarily unavailable. Please try again later.";
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
     } catch (error) {
-      console.error('Gemini Essay Enhancement Error:', error);
+      console.log('Enhancement unavailable due to:', error instanceof Error ? error.message : 'Unknown error');
       return "Enhanced version temporarily unavailable. Please try again later.";
     }
   },
