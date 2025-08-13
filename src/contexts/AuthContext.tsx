@@ -22,64 +22,77 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Skip auth initialization if no Supabase config
-    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    
-    // Get initial user with timeout
     const initAuth = async () => {
+      // Check if Supabase is configured
+      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        console.log('Supabase not configured, running in demo mode');
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       try {
-        const user = await Promise.race([
-          authService.getCurrentUser(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000))
-        ]);
-        setUser(user as AuthUser | null);
+        // Get current user
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+
+        // Set up auth state listener
+        const { data } = authService.onAuthStateChange((user) => {
+          setUser(user);
+        });
+
+        // Store subscription for cleanup
+        return data?.subscription;
       } catch (error) {
-        console.log('Auth initialization failed, continuing without auth');
+        console.error('Auth initialization error:', error);
         setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
-    initAuth();
+    const subscription = initAuth();
 
-    // Listen for auth changes
-    let subscription: any;
-    try {
-      const { data } = authService.onAuthStateChange((user) => {
-        setUser(user);
-      });
-      subscription = data?.subscription;
-    } catch (error) {
-      console.log('Auth listener setup failed');
-    }
-
+    // Cleanup function
     return () => {
-      if (subscription?.unsubscribe) {
-        subscription.unsubscribe();
-      }
+      subscription?.then(sub => {
+        if (sub?.unsubscribe) {
+          sub.unsubscribe();
+        }
+      });
     };
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error('Supabase is not configured. Please set up your environment variables.');
+    }
+
     try {
-      await authService.signIn(email, password);
+      const { user } = await authService.signIn(email, password);
+      if (user) {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      }
     } catch (error) {
       throw error;
     }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error('Supabase is not configured. Please set up your environment variables.');
+    }
+
     try {
-      await authService.signUp(email, password, fullName);
+      const { user } = await authService.signUp(email, password, fullName);
+      if (user) {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      }
     } catch (error) {
       throw error;
     }
@@ -88,8 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await authService.signOut();
+      setUser(null);
     } catch (error) {
-      console.log('Sign out failed');
+      console.error('Sign out failed:', error);
+      // Still clear user state even if sign out fails
+      setUser(null);
     }
   };
 

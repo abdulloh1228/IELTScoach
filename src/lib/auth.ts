@@ -10,6 +10,11 @@ export interface AuthUser {
 export const authService = {
   // Sign up with email and password
   async signUp(email: string, password: string, fullName: string) {
+    // Check if Supabase is configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error('Supabase is not configured');
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -19,15 +24,22 @@ export const authService = {
 
     // Create profile after successful signup
     if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          full_name: fullName,
-          email: email,
-        });
+      try {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            full_name: fullName,
+            email: email,
+          });
 
-      if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          // Don't throw here, user is still created
+        }
+      } catch (profileError) {
+        console.error('Profile creation failed:', profileError);
+      }
     }
 
     return data;
@@ -35,6 +47,11 @@ export const authService = {
 
   // Sign in with email and password
   async signIn(email: string, password: string) {
+    // Check if Supabase is configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error('Supabase is not configured');
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -46,22 +63,41 @@ export const authService = {
 
   // Sign out
   async signOut() {
+    // Check if Supabase is configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      return; // Silently return if not configured
+    }
+
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   },
 
   // Get current user
   async getCurrentUser(): Promise<AuthUser | null> {
+    // Check if Supabase is configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      return null;
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) return null;
 
-    // Get user profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    // Get user profile with error handling
+    let profile = null;
+    try {
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (!error) {
+        profile = profileData;
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
 
     return {
       id: user.id,
@@ -72,6 +108,11 @@ export const authService = {
 
   // Update profile
   async updateProfile(updates: Partial<Profile>) {
+    // Check if Supabase is configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error('Supabase is not configured');
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -88,11 +129,21 @@ export const authService = {
 
   // Listen to auth changes
   onAuthStateChange(callback: (user: AuthUser | null) => void) {
+    // Check if Supabase is configured
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      return { data: { subscription: null } };
+    }
+
     return supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const user = await this.getCurrentUser();
-        callback(user);
-      } else {
+      try {
+        if (session?.user) {
+          const user = await this.getCurrentUser();
+          callback(user);
+        } else {
+          callback(null);
+        }
+      } catch (error) {
+        console.error('Auth state change error:', error);
         callback(null);
       }
     });
