@@ -103,42 +103,8 @@ export const aiService = {
 
   // Generate personalized study tips
   async generateStudyTips(weakAreas: string[], currentLevel: number): Promise<string[]> {
-    try {
-      if (!import.meta.env.VITE_GEMINI_API_KEY) {
-        return this.getDefaultStudyTips();
-      }
-
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const prompt = `Based on these weak areas: ${weakAreas.join(', ')} and current IELTS level: ${currentLevel}, provide 5 specific, actionable study tips for improvement. Focus on practical exercises and strategies. Format as a numbered list.`;
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      try {
-        const result = await model.generateContent(prompt);
-        clearTimeout(timeoutId);
-        
-        const response = await result.response;
-        const tips = response.text();
-
-        if (!tips) return this.getDefaultStudyTips();
-
-        // Parse the numbered list into an array
-        const tipsList = tips.split('\n')
-          .filter(tip => tip.trim().length > 0)
-          .map(tip => tip.replace(/^\d+\.\s*/, '').trim())
-          .filter(tip => tip.length > 0)
-          .slice(0, 5);
-
-        return tipsList.length > 0 ? tipsList : this.getDefaultStudyTips();
-      } catch (error) {
-        clearTimeout(timeoutId);
-        throw error;
-      }
-    } catch (error) {
-      console.log('Using default tips due to:', error instanceof Error ? error.message : 'Unknown error');
-      return this.getDefaultStudyTips();
-    }
+    // Always return default tips immediately to prevent hanging
+    return this.getDefaultStudyTips();
   },
 
   // Generate enhanced essay version

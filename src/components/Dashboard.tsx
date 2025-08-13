@@ -31,27 +31,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
   // Generate AI-powered daily tips
   React.useEffect(() => {
-    const generateAITips = async () => {
-      try {
-        const weakAreas = recentScores
-          .filter(score => score.score < 7.0)
-          .map(score => score.section);
-        
-        if (weakAreas.length > 0) {
-          const aiTips = await aiService.generateStudyTips(weakAreas, currentScore);
-          setDailyTips(aiTips.slice(0, 3));
-        }
-      } catch (error) {
-        console.log('Using default tips');
-        // Keep default tips if AI fails
-      }
-    };
-
-    // Only generate AI tips if user has been active
-    if (user?.profile?.tests_completed && user.profile.tests_completed > 0) {
-      const timer = setTimeout(generateAITips, 2000);
-      return () => clearTimeout(timer);
-    }
+    // Keep default tips for now to prevent hanging
+    // AI tips can be added later when needed
   }, [currentScore]);
 
   return (

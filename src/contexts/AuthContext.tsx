@@ -22,40 +22,85 @@ export function useAuth() {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Get initial user
-    authService.getCurrentUser().then(user => {
-      setUser(user);
+    // Skip auth initialization if no Supabase config
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
       setLoading(false);
-    });
+      return;
+    }
+
+    setLoading(true);
+    
+    // Get initial user with timeout
+    const initAuth = async () => {
+      try {
+        const user = await Promise.race([
+          authService.getCurrentUser(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 5000))
+        ]);
+        setUser(user as AuthUser | null);
+      } catch (error) {
+        console.log('Auth initialization failed, continuing without auth');
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = authService.onAuthStateChange((user) => {
-      setUser(user);
-      setLoading(false);
-    });
+    let subscription: any;
+    try {
+      const { data } = authService.onAuthStateChange((user) => {
+        setUser(user);
+      });
+      subscription = data?.subscription;
+    } catch (error) {
+      console.log('Auth listener setup failed');
+    }
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (subscription?.unsubscribe) {
+        subscription.unsubscribe();
+      }
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    await authService.signIn(email, password);
+    try {
+      await authService.signIn(email, password);
+    } catch (error) {
+      throw error;
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    await authService.signUp(email, password, fullName);
+    try {
+      await authService.signUp(email, password, fullName);
+    } catch (error) {
+      throw error;
+    }
   };
 
   const signOut = async () => {
-    await authService.signOut();
+    try {
+      await authService.signOut();
+    } catch (error) {
+      console.log('Sign out failed');
+    }
   };
 
   const updateProfile = async (updates: any) => {
-    const updatedProfile = await authService.updateProfile(updates);
-    if (user) {
-      setUser({ ...user, profile: updatedProfile });
+    try {
+      const updatedProfile = await authService.updateProfile(updates);
+      if (user) {
+        setUser({ ...user, profile: updatedProfile });
+      }
+    } catch (error) {
+      throw error;
     }
   };
 
