@@ -1,238 +1,137 @@
-import { supabase } from './supabase';
-import { aiService } from './aiService';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { authService, type AuthUser } from '../lib/auth';
 
-export const testService = {
-  // Create a new test session
-  async createTestSession(testType: TestSession['test_type']): Promise<TestSession> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+interface AuthContextType {
+  user: AuthUser | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  updateProfile: (updates: any) => Promise<void>;
+}
 
-    const { data, error } = await supabase
-      .from('test_sessions')
-      .insert({
-        user_id: user.id,
-        test_type: testType,
-      })
-      .select()
-      .single();
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-    if (error) throw error;
-    return data;
-  },
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
 
-  // Complete a test session
-  async completeTestSession(sessionId: string, overallScore?: number): Promise<void> {
-    const { error } = await supabase
-      .from('test_sessions')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        overall_score: overallScore,
-      })
-      .eq('id', sessionId);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    if (error) throw error;
-  },
+  useEffect(() => {
+    const initAuth = async () => {
+      // Check if Supabase is configured
+      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        console.log('Supabase not configured, running in demo mode');
+        setUser(null);
+        setLoading(false);
+        return;
+      }
 
-  // Submit writing essay
-  async submitWritingEssay(submission: Omit<WritingSubmission, 'id' | 'user_id' | 'created_at' | 'word_count'>): Promise<WritingSubmission> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+      try {
+        // Get current user
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
 
-    // Calculate word count
-    const wordCount = submission.content.split(/\s+/).filter(word => word.length > 0).length;
+        // Set up auth state listener
+        const { data } = authService.onAuthStateChange((user) => {
+          setUser(user);
+        });
 
-    // Generate real AI feedback
-    const aiFeedback = await aiService.analyzeWriting(submission.content, submission.task_type);
-
-    const { data, error } = await supabase
-      .from('writing_submissions')
-      .insert({
-        ...submission,
-        user_id: user.id,
-        word_count: wordCount,
-        band_score: aiFeedback.band_score,
-        task_response: aiFeedback.task_response,
-        coherence_cohesion: aiFeedback.coherence_cohesion,
-        lexical_resource: aiFeedback.lexical_resource,
-        grammatical_range: aiFeedback.grammatical_range,
-        ai_feedback: aiFeedback.ai_feedback,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Submit speaking recording
-  async submitSpeakingRecording(recording: Omit<SpeakingRecording, 'id' | 'user_id' | 'created_at'>, transcript?: string): Promise<SpeakingRecording> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    // Generate real AI feedback if transcript is provided
-    let aiFeedback;
-    if (transcript) {
-      aiFeedback = await aiService.analyzeSpeaking(transcript, recording.part_number);
-    } else {
-      // Fallback to mock feedback if no transcript
-      aiFeedback = await this.generateSpeakingFeedback(recording.part_number);
-    }
-
-    const { data, error } = await supabase
-      .from('speaking_recordings')
-      .insert({
-        ...recording,
-        user_id: user.id,
-        band_score: aiFeedback.band_score,
-        fluency_coherence: aiFeedback.fluency_coherence,
-        pronunciation: aiFeedback.pronunciation,
-        lexical_resource: aiFeedback.lexical_resource,
-        grammatical_range: aiFeedback.grammatical_range,
-        ai_feedback: aiFeedback.ai_feedback,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Submit reading responses
-  async submitReadingResponse(response: Omit<ReadingResponse, 'id' | 'user_id' | 'created_at'>): Promise<ReadingResponse> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    // Calculate score and band
-    const score = this.calculateReadingScore(response.answers, response.correct_answers);
-    const bandScore = this.calculateBandScore(score, response.total_questions);
-
-    const { data, error } = await supabase
-      .from('reading_responses')
-      .insert({
-        ...response,
-        user_id: user.id,
-        score,
-        band_score: bandScore,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Submit listening responses
-  async submitListeningResponse(response: Omit<ListeningResponse, 'id' | 'user_id' | 'created_at'>): Promise<ListeningResponse> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    // Calculate score and band
-    const score = this.calculateListeningScore(response.answers, response.correct_answers);
-    const bandScore = this.calculateBandScore(score, response.total_questions);
-
-    const { data, error } = await supabase
-      .from('listening_responses')
-      .insert({
-        ...response,
-        user_id: user.id,
-        score,
-        band_score: bandScore,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  },
-
-  // Get user's test history
-  async getUserTestHistory(): Promise<TestSession[]> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('test_sessions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  },
-
-  // Get user's writing submissions
-  async getUserWritingSubmissions(): Promise<WritingSubmission[]> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('writing_submissions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-  },
-
-  // Fallback mock AI feedback generation for speaking (when no transcript available)
-  async generateSpeakingFeedback(partNumber: number) {
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const baseScore = 6 + Math.random() * 2;
-
-    return {
-      band_score: Number(baseScore.toFixed(1)),
-      fluency_coherence: Number((baseScore + Math.random() * 0.5).toFixed(1)),
-      pronunciation: Number((baseScore + Math.random() * 0.5).toFixed(1)),
-      lexical_resource: Number((baseScore + Math.random() * 0.5).toFixed(1)),
-      grammatical_range: Number((baseScore + Math.random() * 0.5).toFixed(1)),
-      ai_feedback: {
-        strengths: [
-          "Good fluency with natural rhythm",
-          "Clear pronunciation of most sounds",
-          "Appropriate use of vocabulary"
-        ],
-        improvements: [
-          "Work on specific sound pronunciation",
-          "Use more varied vocabulary",
-          "Practice complex grammatical structures"
-        ],
-        suggestions: [
-          "Record yourself daily",
-          "Practice tongue twisters",
-          "Learn idiomatic expressions"
-        ]
+        // Store subscription for cleanup
+        return data?.subscription;
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
     };
-  },
 
-  // Calculate reading/listening scores
-  calculateReadingScore(userAnswers: any, correctAnswers: any): number {
-    let correct = 0;
-    Object.keys(correctAnswers).forEach(key => {
-      if (userAnswers[key] && userAnswers[key].toLowerCase() === correctAnswers[key].toLowerCase()) {
-        correct++;
+    const subscription = initAuth();
+
+    // Cleanup function
+    return () => {
+      subscription?.then(sub => {
+        if (sub?.unsubscribe) {
+          sub.unsubscribe();
+        }
+      });
+    };
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error('Supabase is not configured. Please set up your environment variables.');
+    }
+
+    try {
+      const { user } = await authService.signIn(email, password);
+      if (user) {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
       }
-    });
-    return correct;
-  },
+    } catch (error) {
+      throw error;
+    }
+  };
 
-  calculateListeningScore(userAnswers: any, correctAnswers: any): number {
-    return this.calculateReadingScore(userAnswers, correctAnswers);
-  },
+  const signUp = async (email: string, password: string, fullName: string) => {
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error('Supabase is not configured. Please set up your environment variables.');
+    }
 
-  // Convert raw score to band score
-  calculateBandScore(score: number, total: number): number {
-    const percentage = (score / total) * 100;
-    if (percentage >= 90) return 9.0;
-    if (percentage >= 80) return 8.0;
-    if (percentage >= 70) return 7.0;
-    if (percentage >= 60) return 6.0;
-    if (percentage >= 50) return 5.0;
-    if (percentage >= 40) return 4.0;
-    return 3.0;
-  },
-};
+    try {
+      const { user } = await authService.signUp(email, password, fullName);
+      if (user) {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await authService.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Sign out failed:', error);
+      // Still clear user state even if sign out fails
+      setUser(null);
+    }
+  };
+
+  const updateProfile = async (updates: any) => {
+    try {
+      const updatedProfile = await authService.updateProfile(updates);
+      if (user) {
+        setUser({ ...user, profile: updatedProfile });
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const value = {
+    user,
+    loading,
+    signIn,
+    signUp,
+    signOut,
+    updateProfile,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+}

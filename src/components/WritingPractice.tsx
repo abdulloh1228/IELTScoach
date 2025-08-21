@@ -1,329 +1,137 @@
-import React, { useState } from 'react';
-import { Send, Clock, FileText, User, Lightbulb } from 'lucide-react';
-import { testService } from '../lib/testService';
-import { progressService } from '../lib/progressService';
-import { aiService } from '../lib/aiService';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { authService, type AuthUser } from '../lib/auth';
 
-type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
-
-interface WritingPracticeProps {
-  onNavigate: (page: Page) => void;
+interface AuthContextType {
+  user: AuthUser | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  updateProfile: (updates: any) => Promise<void>;
 }
 
-export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
-  const [selectedTask, setSelectedTask] = useState<'task1' | 'task2'>('task1');
-  const [essay, setEssay] = useState('');
-  const [showResults, setShowResults] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<any>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-  const task1Prompt = "The chart below shows the percentage of households in owned and rented accommodation in England and Wales between 1918 and 2011. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.";
-  
-  const task2Prompt = "Some people believe that studying at university or college is the best route to a successful career, while others believe that it is better to get a job straight after school. Discuss both views and give your opinion.";
-
-  const handleSubmit = async () => {
-    if (!essay.trim()) return;
-
-    setLoading(true);
-    try {
-      // Create test session
-      const session = await testService.createTestSession('writing');
-      
-      // Submit writing essay
-      const submission = await testService.submitWritingEssay({
-        session_id: session.id,
-        task_type: selectedTask,
-        prompt: selectedTask === 'task1' ? task1Prompt : task2Prompt,
-        content: essay,
-        submission_type: 'typed',
-        ai_feedback: {},
-        human_feedback_requested: false,
-      });
-
-      setResults(submission);
-      setShowResults(true);
-      
-      // Update user stats
-      await progressService.incrementTestCompletion();
-      await progressService.addStudyTime(selectedTask === 'task1' ? 20 : 40);
-    } catch (error) {
-      console.log('Submission error:', error);
-      alert('Error submitting essay. Please check your connection and try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (showResults) {
-    if (!results) return null;
-
-    return (
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-900">Writing Analysis Results</h1>
-          <button 
-            onClick={() => setShowResults(false)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Try Another Essay
-          </button>
-        </div>
-
-        {/* Overall Score */}
-        <div className="bg-gradient-to-r from-blue-600 to-teal-600 rounded-xl p-8 text-white text-center">
-          <h2 className="text-2xl font-semibold mb-2">Your Estimated Band Score</h2>
-          <div className="text-6xl font-bold mb-4">{results.band_score}</div>
-          <p className="text-blue-100">Great progress! You're on track to reach your target score.</p>
-        </div>
-
-        {/* Detailed Breakdown */}
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Detailed Band Scores</h3>
-            <div className="space-y-4">
-              {[
-                { criteria: 'Task Response', score: results.task_response },
-                { criteria: 'Coherence & Cohesion', score: results.coherence_cohesion },
-                { criteria: 'Lexical Resource', score: results.lexical_resource },
-                { criteria: 'Grammatical Range', score: results.grammatical_range }
-              ].map((item, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="font-medium text-gray-800">{item.criteria}</span>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-24 bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${(item.score / 9) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="font-bold text-blue-600 w-8">{item.score}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">
-              <Lightbulb className="inline mr-2" size={20} />
-              Improvement Tips
-            </h3>
-            <div className="space-y-3">
-              {results.ai_feedback.improvements?.map((tip: string, index: number) => (
-                <div key={index} className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
-                  <div className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
-                    {index + 1}
-                  </div>
-                  <p className="text-gray-700 text-sm">{tip}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Enhanced Version */}
-        <EnhancedEssaySection originalEssay={essay} taskType={selectedTask} />
-
-        {/* Human Feedback Option */}
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
-          <div className="flex items-center space-x-3 mb-4">
-            <User className="text-purple-600" size={24} />
-            <h3 className="text-xl font-semibold text-gray-900">Want Human Expert Feedback?</h3>
-          </div>
-          <p className="text-gray-700 mb-4">
-            Get detailed feedback from certified IELTS instructors within 24-48 hours. 
-            Perfect for personalized guidance and advanced improvement strategies.
-          </p>
-          <button className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
-            Request Human Feedback ($15)
-          </button>
-        </div>
-      </div>
-    );
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Writing Practice</h1>
-          <p className="text-gray-600 mt-2">Practice IELTS Writing Tasks with instant AI feedback</p>
-        </div>
-        <button 
-          onClick={() => onNavigate('exam-selector')}
-          className="text-blue-600 hover:text-blue-700 font-medium"
-        >
-          ← Back to Exams
-        </button>
-      </div>
-
-      {/* Task Selection */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Writing Task</h2>
-        <div className="grid md:grid-cols-2 gap-4">
-          <button
-            onClick={() => setSelectedTask('task1')}
-            className={`p-4 rounded-lg border-2 transition-all ${
-              selectedTask === 'task1'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-lg ${selectedTask === 'task1' ? 'bg-blue-500' : 'bg-gray-400'}`}>
-                <FileText className="text-white" size={20} />
-              </div>
-              <div className="text-left">
-                <h3 className="font-semibold">Task 1 - Academic</h3>
-                <p className="text-sm text-gray-600">Describe graphs, charts, or diagrams</p>
-                <p className="text-xs text-gray-500 mt-1">20 minutes • 150 words minimum</p>
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setSelectedTask('task2')}
-            className={`p-4 rounded-lg border-2 transition-all ${
-              selectedTask === 'task2'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-lg ${selectedTask === 'task2' ? 'bg-blue-500' : 'bg-gray-400'}`}>
-                <FileText className="text-white" size={20} />
-              </div>
-              <div className="text-left">
-                <h3 className="font-semibold">Task 2 - Essay</h3>
-                <p className="text-sm text-gray-600">Write an argumentative essay</p>
-                <p className="text-xs text-gray-500 mt-1">40 minutes • 250 words minimum</p>
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      {/* Task Prompt */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <div className="flex items-center space-x-2 mb-4">
-          <Clock className="text-blue-600" size={20} />
-          <h2 className="text-xl font-semibold text-gray-900">
-            {selectedTask === 'task1' ? 'Task 1 Prompt' : 'Task 2 Prompt'}
-          </h2>
-        </div>
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-          <p className="text-gray-800 leading-relaxed">
-            {selectedTask === 'task1' ? task1Prompt : task2Prompt}
-          </p>
-        </div>
-      </div>
-
-      {/* Essay Input */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Write Your Essay</h2>
-        <div>
-          <textarea
-            value={essay}
-            onChange={(e) => setEssay(e.target.value)}
-            placeholder={`Start writing your ${selectedTask === 'task1' ? 'Task 1 response' : 'essay'} here...`}
-            className="w-full h-64 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-          />
-          <div className="flex justify-between items-center mt-4">
-            <span className="text-sm text-gray-600">
-              Word count: {essay.split(' ').filter(word => word.length > 0).length} words
-            </span>
-            <button
-              onClick={handleSubmit}
-              disabled={!essay.trim() || loading}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2 min-w-[140px] justify-center"
-            >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                <>
-                  <Send size={16} />
-                  <span>Get AI Feedback</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return context;
 }
 
-// Enhanced Essay Component
-function EnhancedEssaySection({ originalEssay, taskType }: { originalEssay: string, taskType: 'task1' | 'task2' }) {
-  const [enhancedEssay, setEnhancedEssay] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [showEnhanced, setShowEnhanced] = useState(false);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const generateEnhanced = async () => {
-    setLoading(true);
+  useEffect(() => {
+    const initAuth = async () => {
+      // Check if Supabase is configured
+      if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        console.log('Supabase not configured, running in demo mode');
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Get current user
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+
+        // Set up auth state listener
+        const { data } = authService.onAuthStateChange((user) => {
+          setUser(user);
+        });
+
+        // Store subscription for cleanup
+        return data?.subscription;
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const subscription = initAuth();
+
+    // Cleanup function
+    return () => {
+      subscription?.then(sub => {
+        if (sub?.unsubscribe) {
+          sub.unsubscribe();
+        }
+      });
+    };
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error('Supabase is not configured. Please set up your environment variables.');
+    }
+
     try {
-      const enhanced = await aiService.generateEnhancedEssay(originalEssay, taskType);
-      setEnhancedEssay(enhanced);
-      setShowEnhanced(true);
+      const { user } = await authService.signIn(email, password);
+      if (user) {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      }
     } catch (error) {
-      console.error('Error generating enhanced essay:', error);
-      alert('Error generating enhanced version. Please try again.');
-    } finally {
-      setLoading(false);
+      throw error;
     }
   };
 
+  const signUp = async (email: string, password: string, fullName: string) => {
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error('Supabase is not configured. Please set up your environment variables.');
+    }
+
+    try {
+      const { user } = await authService.signUp(email, password, fullName);
+      if (user) {
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser);
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await authService.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Sign out failed:', error);
+      // Still clear user state even if sign out fails
+      setUser(null);
+    }
+  };
+
+  const updateProfile = async (updates: any) => {
+    try {
+      const updatedProfile = await authService.updateProfile(updates);
+      if (user) {
+        setUser({ ...user, profile: updatedProfile });
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const value = {
+    user,
+    loading,
+    signIn,
+    signUp,
+    signOut,
+    updateProfile,
+  };
+
   return (
-    <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-      <h3 className="text-xl font-semibold text-gray-900 mb-4">AI-Enhanced Version (Band 8+)</h3>
-      
-      {!showEnhanced ? (
-        <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-green-500">
-          <p className="text-gray-700 mb-4">
-            Get an AI-enhanced version of your essay that demonstrates Band 8+ writing techniques, 
-            vocabulary, and structure while maintaining your original ideas.
-          </p>
-          <button 
-            onClick={generateEnhanced}
-            disabled={loading}
-            className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 flex items-center space-x-2"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Generating Enhanced Version...</span>
-              </>
-            ) : (
-              <span>Generate Enhanced Essay</span>
-            )}
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-            <h4 className="font-semibold text-green-800 mb-2">Enhanced Version:</h4>
-            <div className="text-gray-700 whitespace-pre-line leading-relaxed">
-              {enhancedEssay}
-            </div>
-          </div>
-          <div className="flex space-x-2">
-            <button 
-              onClick={() => setShowEnhanced(false)}
-              className="text-green-600 hover:text-green-700 font-medium"
-            >
-              ← Back to Results
-            </button>
-            <button 
-              onClick={generateEnhanced}
-              disabled={loading}
-              className="text-green-600 hover:text-green-700 font-medium"
-            >
-              Generate New Version
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
   );
 }
