@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BookOpen, User, BarChart3, Settings } from 'lucide-react';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthModal from './components/AuthModal';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -18,12 +18,6 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
-        <div className="text-center">
-  const [user, setUser] = useState(null);
 
   const renderPage = () => {
     switch (currentPage) {
@@ -47,6 +41,17 @@ function AppContent() {
         return <Dashboard onNavigate={setCurrentPage} />;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -138,7 +143,9 @@ function AppContent() {
 
 function App() {
   return (
-    <AppContent />
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
