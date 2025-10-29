@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mic, Square, Play, RotateCcw, Volume2, Star } from 'lucide-react';
 import { testService } from '../lib/testService';
 import { progressService } from '../lib/progressService';
+import ChatInterface from './ChatInterface';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -217,7 +218,7 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
             <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded">
               <h4 className="font-medium text-green-800 mb-2">Part 1 Example Response</h4>
               <p className="text-gray-700 text-sm italic">
-                "I work as a software developer for a tech startup in the city center. I absolutely love my job because 
+                "I work as a software developer for a tech startup in the city center. I absolutely love my job because
                 it allows me to be creative and solve complex problems every day. What I find particularly rewarding is..."
               </p>
             </div>
@@ -226,6 +227,13 @@ export default function SpeakingPractice({ onNavigate }: SpeakingPracticeProps) 
             </button>
           </div>
         </div>
+
+        <ChatInterface
+          initialContext={`Excellent work on your speaking test! Your overall band score is ${results.band_score}. I've analyzed your fluency, pronunciation, vocabulary, and grammar. Feel free to ask me specific questions about improving any of these areas!`}
+          testType="speaking"
+          userResponse={transcript}
+          results={results}
+        />
       </div>
     );
   }

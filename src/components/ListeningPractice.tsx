@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { Play, Pause, RotateCcw, Volume2, Clock, CheckCircle } from 'lucide-react';
+import { testService } from '../lib/testService';
+import { progressService } from '../lib/progressService';
+import ChatInterface from './ChatInterface';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -129,6 +132,12 @@ export default function ListeningPractice({ onNavigate }: ListeningPracticeProps
             </p>
           </div>
         </div>
+
+        <ChatInterface
+          initialContext={`Well done on completing the listening test! You achieved a band score of 7.0 by answering 4 out of 5 questions correctly. I can help you understand the audio better and improve your listening skills. What would you like to know?`}
+          testType="listening"
+          results={{ band_score: 7.0, score: 4, total_questions: 5 }}
+        />
       </div>
     );
   }

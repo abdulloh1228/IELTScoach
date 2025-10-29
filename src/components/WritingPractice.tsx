@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Clock, FileText, Send, BookOpen } from 'lucide-react';
 import { testService } from '../lib/testService';
 import { progressService } from '../lib/progressService';
+import ChatInterface from './ChatInterface';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -157,6 +158,13 @@ export default function WritingPractice({ onNavigate }: WritingPracticeProps) {
             <p className="text-gray-700 whitespace-pre-wrap">{response}</p>
           </div>
         </div>
+
+        <ChatInterface
+          initialContext={`I've analyzed your writing and provided detailed feedback. Your overall band score is ${results.band_score}. Feel free to ask me any questions about your results or how to improve!`}
+          testType="writing"
+          userResponse={response}
+          results={results}
+        />
       </div>
     );
   }

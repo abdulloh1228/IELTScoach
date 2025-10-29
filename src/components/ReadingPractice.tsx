@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Clock, CheckCircle, XCircle, BookOpen, ArrowRight } from 'lucide-react';
 import { testService } from '../lib/testService';
 import { progressService } from '../lib/progressService';
+import ChatInterface from './ChatInterface';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -226,6 +227,12 @@ export default function ReadingPractice({ onNavigate }: ReadingPracticeProps) {
             </div>
           </div>
         </div>
+
+        <ChatInterface
+          initialContext={`Great job completing the reading test! You scored ${results.score} out of ${results.total_questions}, achieving a band score of ${results.band_score}. Let me know if you have any questions about specific questions or how to improve your reading skills!`}
+          testType="reading"
+          results={results}
+        />
       </div>
     );
   }
