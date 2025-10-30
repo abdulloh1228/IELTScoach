@@ -21,43 +21,18 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'signin' }: A
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email.trim() || !password.trim()) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    if (mode === 'signup' && !fullName.trim()) {
-      setError('Please enter your full name');
-      return;
-    }
-
     setLoading(true);
     setError('');
 
     try {
       if (mode === 'signup') {
         await signUp(email, password, fullName);
-        alert('Account created successfully! You can now sign in.');
       } else {
         await signIn(email, password);
       }
       onClose();
-      // Reset form
-      setEmail('');
-      setPassword('');
-      setFullName('');
     } catch (err: any) {
-      console.error('Auth error:', err);
-      if (err.message?.includes('Supabase is not configured')) {
-        setError('Database connection not configured. Please set up Supabase to use authentication.');
-      } else if (err.message?.includes('Invalid login credentials')) {
-        setError('Invalid email or password. Please check your credentials.');
-      } else if (err.message?.includes('User already registered')) {
-        setError('An account with this email already exists. Please sign in instead.');
-      } else {
-        setError(err.message || 'An error occurred. Please try again.');
-      }
+      setError(err.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
