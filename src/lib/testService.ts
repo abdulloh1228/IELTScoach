@@ -24,7 +24,21 @@ export interface TestResult {
 }
 
 class TestService {
-  async createTestSession(userId: string, examType: string, section: string): Promise<TestSession> {
+  async createTestSession(section: string): Promise<{ id: string }> {
+    try {
+      // Always return a demo session for now
+      return {
+        id: `demo-${Date.now()}-${section}`
+      };
+    } catch (error) {
+      console.error('Failed to create test session:', error);
+      return {
+        id: `demo-${Date.now()}-${section}`
+      };
+    }
+  }
+
+  async createTestSessionOld(userId: string, examType: string, section: string): Promise<TestSession> {
     try {
       if (!import.meta.env.VITE_SUPABASE_URL) {
         // Demo mode - return mock session
@@ -185,6 +199,101 @@ class TestService {
       console.error('Failed to get test history:', error);
       return [];
     }
+  }
+
+  async submitWritingResponse(data: {
+    session_id: string;
+    task_number: number;
+    prompt: string;
+    response: string;
+    word_count: number;
+    time_taken: number;
+  }): Promise<any> {
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    const bandScore = Math.min(9.0, Math.max(5.0, 6.5 + (data.word_count / 100) * 0.5));
+
+    return {
+      session_id: data.session_id,
+      band_score: Number(bandScore.toFixed(1)),
+      task_achievement: Number((bandScore - 0.5 + Math.random() * 0.5).toFixed(1)),
+      coherence_cohesion: Number((bandScore - 0.3 + Math.random() * 0.4).toFixed(1)),
+      lexical_resource: Number((bandScore + Math.random() * 0.3).toFixed(1)),
+      grammatical_range: Number((bandScore - 0.2 + Math.random() * 0.4).toFixed(1)),
+      ai_feedback: {
+        strengths: [
+          'Good paragraph structure and organization',
+          'Appropriate use of topic sentences',
+          'Clear introduction and conclusion'
+        ],
+        improvements: [
+          'Use more varied vocabulary and synonyms',
+          'Include more specific examples to support arguments',
+          'Work on sentence variety and complexity'
+        ]
+      }
+    };
+  }
+
+  async submitReadingResponse(data: {
+    session_id: string;
+    passage_id: string;
+    answers: any;
+    correct_answers: any;
+    total_questions: number;
+    time_taken: number;
+  }): Promise<any> {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    let score = 0;
+    for (const [key, value] of Object.entries(data.answers)) {
+      if (data.correct_answers[key] === value) {
+        score++;
+      }
+    }
+
+    const bandScore = score === 5 ? 9.0 : score === 4 ? 7.5 : score === 3 ? 6.5 : score === 2 ? 5.5 : 5.0;
+
+    return {
+      session_id: data.session_id,
+      band_score: bandScore,
+      score,
+      total_questions: data.total_questions,
+      time_taken: data.time_taken
+    };
+  }
+
+  async submitSpeakingRecording(data: {
+    session_id: string;
+    part_number: number;
+    question: string;
+    recording_url?: string;
+    duration: number;
+  }, transcript: string): Promise<any> {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const wordCount = transcript.split(/\s+/).length;
+    const baseBand = Math.min(8.5, 6.0 + (wordCount / 50) * 0.5);
+
+    return {
+      session_id: data.session_id,
+      band_score: Number(baseBand.toFixed(1)),
+      fluency_coherence: Number((baseBand - 0.3 + Math.random() * 0.5).toFixed(1)),
+      pronunciation: Number((baseBand - 0.2 + Math.random() * 0.4).toFixed(1)),
+      lexical_resource: Number((baseBand + Math.random() * 0.3).toFixed(1)),
+      grammatical_range: Number((baseBand - 0.4 + Math.random() * 0.6).toFixed(1)),
+      ai_feedback: {
+        strengths: [
+          'Good fluency and natural speech rhythm',
+          'Clear pronunciation of most words'
+        ],
+        improvements: [
+          'Use more complex sentence structures',
+          'Expand your answers with more details',
+          'Practice stress and intonation patterns'
+        ]
+      }
+    };
   }
 }
 
