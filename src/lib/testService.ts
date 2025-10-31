@@ -222,7 +222,7 @@ class TestService {
 
       console.log('Calling Gemini API for writing analysis...');
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest' });
 
       const prompt = `You are an expert IELTS Writing evaluator. Analyze this IELTS essay and provide a JSON response ONLY (no other text).
 
