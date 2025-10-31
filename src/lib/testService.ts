@@ -209,10 +209,70 @@ class TestService {
     word_count: number;
     time_taken: number;
   }): Promise<any> {
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
 
+      if (!import.meta.env.VITE_GEMINI_API_KEY) {
+        return this.getMockWritingResponse(data);
+      }
+
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+      const prompt = `You are an expert IELTS Writing evaluator. Analyze this IELTS essay and provide a JSON response ONLY (no other text).
+
+Essay Prompt: ${data.prompt}
+
+Student Essay: ${data.response}
+
+Provide a JSON response with this exact structure (no markdown, just pure JSON):
+{
+  "band_score": <number between 5.0 and 9.0>,
+  "task_achievement": <number between 5 and 9>,
+  "coherence_cohesion": <number between 5 and 9>,
+  "lexical_resource": <number between 5 and 9>,
+  "grammatical_range": <number between 5 and 9>,
+  "strengths": [<3 specific strengths found in the essay>],
+  "improvements": [<3 specific areas to improve>]
+}
+
+Consider:
+- Task completion and relevance
+- Paragraph organization and flow
+- Vocabulary range and accuracy
+- Grammar and sentence structure
+- Overall coherence`;
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return this.getMockWritingResponse(data);
+      }
+
+      const feedback = JSON.parse(jsonMatch[0]);
+
+      return {
+        session_id: data.session_id,
+        band_score: Math.min(9.0, Math.max(5.0, feedback.band_score)),
+        task_achievement: Math.min(9, Math.max(5, feedback.task_achievement)),
+        coherence_cohesion: Math.min(9, Math.max(5, feedback.coherence_cohesion)),
+        lexical_resource: Math.min(9, Math.max(5, feedback.lexical_resource)),
+        grammatical_range: Math.min(9, Math.max(5, feedback.grammatical_range)),
+        ai_feedback: {
+          strengths: Array.isArray(feedback.strengths) ? feedback.strengths : ['Good structure', 'Clear ideas'],
+          improvements: Array.isArray(feedback.improvements) ? feedback.improvements : ['Add more examples', 'Vary sentence structure']
+        }
+      };
+    } catch (error) {
+      console.error('Error calling Gemini API for writing:', error);
+      return this.getMockWritingResponse(data);
+    }
+  }
+
+  private getMockWritingResponse(data: any) {
     const bandScore = Math.min(9.0, Math.max(5.0, 6.5 + (data.word_count / 100) * 0.5));
-
     return {
       session_id: data.session_id,
       band_score: Number(bandScore.toFixed(1)),
@@ -243,8 +303,77 @@ class TestService {
     total_questions: number;
     time_taken: number;
   }): Promise<any> {
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
 
+      if (!import.meta.env.VITE_GEMINI_API_KEY) {
+        return this.getMockReadingResponse(data);
+      }
+
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+      const answersStr = Object.entries(data.answers)
+        .map(([q, a]) => `Q${q}: "${a}"`)
+        .join('\n');
+
+      const correctStr = Object.entries(data.correct_answers)
+        .map(([q, a]) => `Q${q}: "${a}"`)
+        .join('\n');
+
+      const prompt = `You are an IELTS Reading expert. Evaluate these reading test answers and provide a JSON response ONLY (no other text).
+
+Student Answers:
+${answersStr}
+
+Correct Answers:
+${correctStr}
+
+Provide a JSON response with this exact structure (no markdown, just pure JSON):
+{
+  "band_score": <number between 5.0 and 9.0>,
+  "score": <number of correct answers>,
+  "analysis": "<brief analysis of performance>"
+}
+
+Calculate band_score based on the percentage of correct answers:
+- 100% correct = 9.0
+- 80% correct = 8.0
+- 60% correct = 7.0
+- 40% correct = 6.0
+- 20% correct = 5.5
+- Below 20% = 5.0`;
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return this.getMockReadingResponse(data);
+      }
+
+      const feedback = JSON.parse(jsonMatch[0]);
+      let score = 0;
+      for (const [key, value] of Object.entries(data.answers)) {
+        if (data.correct_answers[key] === value) {
+          score++;
+        }
+      }
+
+      return {
+        session_id: data.session_id,
+        band_score: Math.min(9.0, Math.max(5.0, feedback.band_score)),
+        score,
+        total_questions: data.total_questions,
+        time_taken: data.time_taken
+      };
+    } catch (error) {
+      console.error('Error calling Gemini API for reading:', error);
+      return this.getMockReadingResponse(data);
+    }
+  }
+
+  private getMockReadingResponse(data: any) {
     let score = 0;
     for (const [key, value] of Object.entries(data.answers)) {
       if (data.correct_answers[key] === value) {
@@ -270,8 +399,69 @@ class TestService {
     recording_url?: string;
     duration: number;
   }, transcript: string): Promise<any> {
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
 
+      if (!import.meta.env.VITE_GEMINI_API_KEY) {
+        return this.getMockSpeakingResponse(data, transcript);
+      }
+
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+
+      const prompt = `You are an expert IELTS Speaking evaluator. Analyze this speaking test response and provide a JSON response ONLY (no other text).
+
+Part ${data.part_number} Question: ${data.question}
+
+Student Response Transcript:
+${transcript}
+
+Evaluate based on these criteria and provide a JSON response with this exact structure (no markdown, just pure JSON):
+{
+  "band_score": <number between 5.0 and 9.0>,
+  "fluency_coherence": <number between 5 and 9>,
+  "pronunciation": <number between 5 and 9>,
+  "lexical_resource": <number between 5 and 9>,
+  "grammatical_range": <number between 5 and 9>,
+  "strengths": [<2-3 specific strengths>],
+  "improvements": [<2-3 areas to improve>]
+}
+
+Consider:
+- Fluency and coherence: smooth delivery and logical organization
+- Pronunciation: clarity and intelligibility
+- Lexical resource: vocabulary range and precision
+- Grammatical range: sentence complexity and accuracy`;
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return this.getMockSpeakingResponse(data, transcript);
+      }
+
+      const feedback = JSON.parse(jsonMatch[0]);
+
+      return {
+        session_id: data.session_id,
+        band_score: Math.min(9.0, Math.max(5.0, feedback.band_score)),
+        fluency_coherence: Math.min(9, Math.max(5, feedback.fluency_coherence)),
+        pronunciation: Math.min(9, Math.max(5, feedback.pronunciation)),
+        lexical_resource: Math.min(9, Math.max(5, feedback.lexical_resource)),
+        grammatical_range: Math.min(9, Math.max(5, feedback.grammatical_range)),
+        ai_feedback: {
+          strengths: Array.isArray(feedback.strengths) ? feedback.strengths : ['Good effort', 'Clear voice'],
+          improvements: Array.isArray(feedback.improvements) ? feedback.improvements : ['Practice more', 'Use more vocabulary']
+        }
+      };
+    } catch (error) {
+      console.error('Error calling Gemini API for speaking:', error);
+      return this.getMockSpeakingResponse(data, transcript);
+    }
+  }
+
+  private getMockSpeakingResponse(data: any, transcript: string) {
     const wordCount = transcript.split(/\s+/).length;
     const baseBand = Math.min(8.5, 6.0 + (wordCount / 50) * 0.5);
 
