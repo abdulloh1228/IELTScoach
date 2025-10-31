@@ -212,12 +212,17 @@ class TestService {
     try {
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
 
-      if (!import.meta.env.VITE_GEMINI_API_KEY) {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      console.log('Gemini API Key exists:', !!apiKey);
+
+      if (!apiKey) {
+        console.log('No API key, using mock response');
         return this.getMockWritingResponse(data);
       }
 
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      console.log('Calling Gemini API for writing analysis...');
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
       const prompt = `You are an expert IELTS Writing evaluator. Analyze this IELTS essay and provide a JSON response ONLY (no other text).
 
@@ -245,13 +250,17 @@ Consider:
 
       const result = await model.generateContent(prompt);
       const responseText = result.response.text();
+      console.log('Gemini response received:', responseText.substring(0, 200));
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
+        console.log('No JSON found in response, using mock');
         return this.getMockWritingResponse(data);
       }
 
+      console.log('JSON extracted, parsing...');
       const feedback = JSON.parse(jsonMatch[0]);
+      console.log('Successfully parsed AI feedback:', feedback);
 
       return {
         session_id: data.session_id,
@@ -265,8 +274,9 @@ Consider:
           improvements: Array.isArray(feedback.improvements) ? feedback.improvements : ['Add more examples', 'Vary sentence structure']
         }
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error calling Gemini API for writing:', error);
+      console.error('Error details:', error?.message || error);
       return this.getMockWritingResponse(data);
     }
   }
@@ -310,8 +320,13 @@ Consider:
         return this.getMockReadingResponse(data);
       }
 
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        return this.getMockReadingResponse(data);
+      }
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
       const answersStr = Object.entries(data.answers)
         .map(([q, a]) => `Q${q}: "${a}"`)
@@ -406,8 +421,13 @@ Calculate band_score based on the percentage of correct answers:
         return this.getMockSpeakingResponse(data, transcript);
       }
 
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        return this.getMockSpeakingResponse(data, transcript);
+      }
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
       const prompt = `You are an expert IELTS Speaking evaluator. Analyze this speaking test response and provide a JSON response ONLY (no other text).
 
