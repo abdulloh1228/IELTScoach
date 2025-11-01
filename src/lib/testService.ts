@@ -210,27 +210,28 @@ class TestService {
     time_taken: number;
   }): Promise<any> {
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      console.log('Gemini API Key exists:', !!apiKey);
+      const apiKey = import.meta.env.VITE_HF_API_KEY;
 
       if (!apiKey) {
-        console.log('No API key, using mock response');
+        console.log('No Hugging Face API key, using mock response');
         return this.getMockWritingResponse(data);
       }
 
-      console.log('Calling Gemini API for writing analysis...');
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      console.log('Calling Hugging Face API for writing analysis...');
 
-      const prompt = `You are an expert IELTS Writing evaluator. Analyze this IELTS essay and provide a JSON response ONLY (no other text).
+      const hfResponse = await fetch(
+        'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
+        {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          method: 'POST',
+          body: JSON.stringify({
+            inputs: `You are an expert IELTS Writing evaluator. Analyze this IELTS essay and provide ONLY a JSON response.
 
 Essay Prompt: ${data.prompt}
 
 Student Essay: ${data.response}
 
-Provide a JSON response with this exact structure (no markdown, just pure JSON):
+Provide a JSON response with this exact structure:
 {
   "band_score": <number between 5.0 and 9.0>,
   "task_achievement": <number between 5 and 9>,
@@ -239,18 +240,22 @@ Provide a JSON response with this exact structure (no markdown, just pure JSON):
   "grammatical_range": <number between 5 and 9>,
   "strengths": [<3 specific strengths found in the essay>],
   "improvements": [<3 specific areas to improve>]
-}
+}`,
+            parameters: {
+              max_new_tokens: 500,
+            },
+          }),
+        }
+      );
 
-Consider:
-- Task completion and relevance
-- Paragraph organization and flow
-- Vocabulary range and accuracy
-- Grammar and sentence structure
-- Overall coherence`;
+      if (!hfResponse.ok) {
+        throw new Error(`HF API error: ${hfResponse.status}`);
+      }
 
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
-      console.log('Gemini response received:', responseText.substring(0, 200));
+      const hfResult = await hfResponse.json();
+      const responseText = Array.isArray(hfResult) ? hfResult[0]?.generated_text : hfResult.generated_text || '';
+
+      console.log('HF response received:', responseText.substring(0, 200));
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -258,7 +263,6 @@ Consider:
         return this.getMockWritingResponse(data);
       }
 
-      console.log('JSON extracted, parsing...');
       const feedback = JSON.parse(jsonMatch[0]);
       console.log('Successfully parsed AI feedback:', feedback);
 
@@ -275,7 +279,7 @@ Consider:
         }
       };
     } catch (error: any) {
-      console.error('Error calling Gemini API for writing:', error);
+      console.error('Error calling Hugging Face API for writing:', error);
       console.error('Error details:', error?.message || error);
       return this.getMockWritingResponse(data);
     }
@@ -314,19 +318,11 @@ Consider:
     time_taken: number;
   }): Promise<any> {
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const apiKey = import.meta.env.VITE_HF_API_KEY;
 
-      if (!import.meta.env.VITE_GEMINI_API_KEY) {
-        return this.getMockReadingResponse(data);
-      }
-
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) {
         return this.getMockReadingResponse(data);
       }
-
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
       const answersStr = Object.entries(data.answers)
         .map(([q, a]) => `Q${q}: "${a}"`)
@@ -336,7 +332,13 @@ Consider:
         .map(([q, a]) => `Q${q}: "${a}"`)
         .join('\n');
 
-      const prompt = `You are an IELTS Reading expert. Evaluate these reading test answers and provide a JSON response ONLY (no other text).
+      const hfResponse = await fetch(
+        'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
+        {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          method: 'POST',
+          body: JSON.stringify({
+            inputs: `You are an IELTS Reading expert. Evaluate these reading test answers and provide ONLY a JSON response.
 
 Student Answers:
 ${answersStr}
@@ -344,7 +346,7 @@ ${answersStr}
 Correct Answers:
 ${correctStr}
 
-Provide a JSON response with this exact structure (no markdown, just pure JSON):
+Provide a JSON response with this exact structure:
 {
   "band_score": <number between 5.0 and 9.0>,
   "score": <number of correct answers>,
@@ -357,23 +359,34 @@ Calculate band_score based on the percentage of correct answers:
 - 60% correct = 7.0
 - 40% correct = 6.0
 - 20% correct = 5.5
-- Below 20% = 5.0`;
+- Below 20% = 5.0`,
+            parameters: {
+              max_new_tokens: 300,
+            },
+          }),
+        }
+      );
 
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
+      if (!hfResponse.ok) {
+        return this.getMockReadingResponse(data);
+      }
+
+      const hfResult = await hfResponse.json();
+      const responseText = Array.isArray(hfResult) ? hfResult[0]?.generated_text : hfResult.generated_text || '';
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         return this.getMockReadingResponse(data);
       }
 
-      const feedback = JSON.parse(jsonMatch[0]);
       let score = 0;
       for (const [key, value] of Object.entries(data.answers)) {
         if (data.correct_answers[key] === value) {
           score++;
         }
       }
+
+      const feedback = JSON.parse(jsonMatch[0]);
 
       return {
         session_id: data.session_id,
@@ -383,7 +396,7 @@ Calculate band_score based on the percentage of correct answers:
         time_taken: data.time_taken
       };
     } catch (error) {
-      console.error('Error calling Gemini API for reading:', error);
+      console.error('Error calling Hugging Face API for reading:', error);
       return this.getMockReadingResponse(data);
     }
   }
@@ -415,28 +428,26 @@ Calculate band_score based on the percentage of correct answers:
     duration: number;
   }, transcript: string): Promise<any> {
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const apiKey = import.meta.env.VITE_HF_API_KEY;
 
-      if (!import.meta.env.VITE_GEMINI_API_KEY) {
-        return this.getMockSpeakingResponse(data, transcript);
-      }
-
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) {
         return this.getMockSpeakingResponse(data, transcript);
       }
 
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-
-      const prompt = `You are an expert IELTS Speaking evaluator. Analyze this speaking test response and provide a JSON response ONLY (no other text).
+      const hfResponse = await fetch(
+        'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
+        {
+          headers: { Authorization: `Bearer ${apiKey}` },
+          method: 'POST',
+          body: JSON.stringify({
+            inputs: `You are an expert IELTS Speaking evaluator. Analyze this speaking test response and provide ONLY a JSON response.
 
 Part ${data.part_number} Question: ${data.question}
 
 Student Response Transcript:
 ${transcript}
 
-Evaluate based on these criteria and provide a JSON response with this exact structure (no markdown, just pure JSON):
+Provide a JSON response with this exact structure:
 {
   "band_score": <number between 5.0 and 9.0>,
   "fluency_coherence": <number between 5 and 9>,
@@ -451,10 +462,20 @@ Consider:
 - Fluency and coherence: smooth delivery and logical organization
 - Pronunciation: clarity and intelligibility
 - Lexical resource: vocabulary range and precision
-- Grammatical range: sentence complexity and accuracy`;
+- Grammatical range: sentence complexity and accuracy`,
+            parameters: {
+              max_new_tokens: 400,
+            },
+          }),
+        }
+      );
 
-      const result = await model.generateContent(prompt);
-      const responseText = result.response.text();
+      if (!hfResponse.ok) {
+        return this.getMockSpeakingResponse(data, transcript);
+      }
+
+      const hfResult = await hfResponse.json();
+      const responseText = Array.isArray(hfResult) ? hfResult[0]?.generated_text : hfResult.generated_text || '';
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -476,7 +497,7 @@ Consider:
         }
       };
     } catch (error) {
-      console.error('Error calling Gemini API for speaking:', error);
+      console.error('Error calling Hugging Face API for speaking:', error);
       return this.getMockSpeakingResponse(data, transcript);
     }
   }
