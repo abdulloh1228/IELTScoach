@@ -210,28 +210,33 @@ class TestService {
     time_taken: number;
   }): Promise<any> {
     try {
-      const apiKey = import.meta.env.VITE_HF_API_KEY;
+      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
 
       if (!apiKey) {
-        console.log('No Hugging Face API key, using mock response');
+        console.log('No OpenRouter API key, using mock response');
         return this.getMockWritingResponse(data);
       }
 
-      console.log('Calling Hugging Face API for writing analysis...');
+      console.log('Calling DeepSeek API via OpenRouter for writing analysis...');
 
-      const hfResponse = await fetch(
-        'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
-        {
-          headers: { Authorization: `Bearer ${apiKey}` },
-          method: 'POST',
-          body: JSON.stringify({
-            inputs: `You are an expert IELTS Writing evaluator. Analyze this IELTS essay and provide ONLY a JSON response.
+      const orResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'deepseek/deepseek-chat',
+          messages: [
+            {
+              role: 'user',
+              content: `You are an expert IELTS Writing evaluator. Analyze this IELTS essay and provide ONLY a JSON response, no other text.
 
 Essay Prompt: ${data.prompt}
 
 Student Essay: ${data.response}
 
-Provide a JSON response with this exact structure:
+Respond with ONLY this JSON structure:
 {
   "band_score": <number between 5.0 and 9.0>,
   "task_achievement": <number between 5 and 9>,
@@ -240,22 +245,22 @@ Provide a JSON response with this exact structure:
   "grammatical_range": <number between 5 and 9>,
   "strengths": [<3 specific strengths found in the essay>],
   "improvements": [<3 specific areas to improve>]
-}`,
-            parameters: {
-              max_new_tokens: 500,
-            },
-          }),
-        }
-      );
+}`
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+        }),
+      });
 
-      if (!hfResponse.ok) {
-        throw new Error(`HF API error: ${hfResponse.status}`);
+      if (!orResponse.ok) {
+        throw new Error(`OpenRouter API error: ${orResponse.status}`);
       }
 
-      const hfResult = await hfResponse.json();
-      const responseText = Array.isArray(hfResult) ? hfResult[0]?.generated_text : hfResult.generated_text || '';
+      const result = await orResponse.json();
+      const responseText = result.choices?.[0]?.message?.content || '';
 
-      console.log('HF response received:', responseText.substring(0, 200));
+      console.log('DeepSeek response received:', responseText.substring(0, 200));
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -279,7 +284,7 @@ Provide a JSON response with this exact structure:
         }
       };
     } catch (error: any) {
-      console.error('Error calling Hugging Face API for writing:', error);
+      console.error('Error calling DeepSeek API for writing:', error);
       console.error('Error details:', error?.message || error);
       return this.getMockWritingResponse(data);
     }
@@ -318,7 +323,7 @@ Provide a JSON response with this exact structure:
     time_taken: number;
   }): Promise<any> {
     try {
-      const apiKey = import.meta.env.VITE_HF_API_KEY;
+      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
 
       if (!apiKey) {
         return this.getMockReadingResponse(data);
@@ -332,13 +337,18 @@ Provide a JSON response with this exact structure:
         .map(([q, a]) => `Q${q}: "${a}"`)
         .join('\n');
 
-      const hfResponse = await fetch(
-        'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
-        {
-          headers: { Authorization: `Bearer ${apiKey}` },
-          method: 'POST',
-          body: JSON.stringify({
-            inputs: `You are an IELTS Reading expert. Evaluate these reading test answers and provide ONLY a JSON response.
+      const orResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'deepseek/deepseek-chat',
+          messages: [
+            {
+              role: 'user',
+              content: `You are an IELTS Reading expert. Evaluate these reading test answers and provide ONLY a JSON response.
 
 Student Answers:
 ${answersStr}
@@ -346,7 +356,7 @@ ${answersStr}
 Correct Answers:
 ${correctStr}
 
-Provide a JSON response with this exact structure:
+Respond with ONLY this JSON structure:
 {
   "band_score": <number between 5.0 and 9.0>,
   "score": <number of correct answers>,
@@ -359,20 +369,20 @@ Calculate band_score based on the percentage of correct answers:
 - 60% correct = 7.0
 - 40% correct = 6.0
 - 20% correct = 5.5
-- Below 20% = 5.0`,
-            parameters: {
-              max_new_tokens: 300,
-            },
-          }),
-        }
-      );
+- Below 20% = 5.0`
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 300,
+        }),
+      });
 
-      if (!hfResponse.ok) {
+      if (!orResponse.ok) {
         return this.getMockReadingResponse(data);
       }
 
-      const hfResult = await hfResponse.json();
-      const responseText = Array.isArray(hfResult) ? hfResult[0]?.generated_text : hfResult.generated_text || '';
+      const result = await orResponse.json();
+      const responseText = result.choices?.[0]?.message?.content || '';
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -396,7 +406,7 @@ Calculate band_score based on the percentage of correct answers:
         time_taken: data.time_taken
       };
     } catch (error) {
-      console.error('Error calling Hugging Face API for reading:', error);
+      console.error('Error calling DeepSeek API for reading:', error);
       return this.getMockReadingResponse(data);
     }
   }
@@ -428,26 +438,31 @@ Calculate band_score based on the percentage of correct answers:
     duration: number;
   }, transcript: string): Promise<any> {
     try {
-      const apiKey = import.meta.env.VITE_HF_API_KEY;
+      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
 
       if (!apiKey) {
         return this.getMockSpeakingResponse(data, transcript);
       }
 
-      const hfResponse = await fetch(
-        'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
-        {
-          headers: { Authorization: `Bearer ${apiKey}` },
-          method: 'POST',
-          body: JSON.stringify({
-            inputs: `You are an expert IELTS Speaking evaluator. Analyze this speaking test response and provide ONLY a JSON response.
+      const orResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'deepseek/deepseek-chat',
+          messages: [
+            {
+              role: 'user',
+              content: `You are an expert IELTS Speaking evaluator. Analyze this speaking test response and provide ONLY a JSON response.
 
 Part ${data.part_number} Question: ${data.question}
 
 Student Response Transcript:
 ${transcript}
 
-Provide a JSON response with this exact structure:
+Respond with ONLY this JSON structure:
 {
   "band_score": <number between 5.0 and 9.0>,
   "fluency_coherence": <number between 5 and 9>,
@@ -462,20 +477,20 @@ Consider:
 - Fluency and coherence: smooth delivery and logical organization
 - Pronunciation: clarity and intelligibility
 - Lexical resource: vocabulary range and precision
-- Grammatical range: sentence complexity and accuracy`,
-            parameters: {
-              max_new_tokens: 400,
-            },
-          }),
-        }
-      );
+- Grammatical range: sentence complexity and accuracy`
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 400,
+        }),
+      });
 
-      if (!hfResponse.ok) {
+      if (!orResponse.ok) {
         return this.getMockSpeakingResponse(data, transcript);
       }
 
-      const hfResult = await hfResponse.json();
-      const responseText = Array.isArray(hfResult) ? hfResult[0]?.generated_text : hfResult.generated_text || '';
+      const result = await orResponse.json();
+      const responseText = result.choices?.[0]?.message?.content || '';
 
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -497,7 +512,7 @@ Consider:
         }
       };
     } catch (error) {
-      console.error('Error calling Hugging Face API for speaking:', error);
+      console.error('Error calling DeepSeek API for speaking:', error);
       return this.getMockSpeakingResponse(data, transcript);
     }
   }
