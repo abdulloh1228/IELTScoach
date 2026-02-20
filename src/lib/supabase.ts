@@ -10,8 +10,16 @@ console.log('Supabase config:', {
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables:', { supabaseUrl, supabaseAnonKey });
-  // Don't throw error immediately, let it fail gracefully
+  throw new Error('Missing Supabase environment variables');
 }
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
 
 // Database types
 export interface Profile {
