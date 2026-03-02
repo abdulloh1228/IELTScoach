@@ -115,18 +115,6 @@
       - `is_active` (boolean)
       - `created_at` (timestamp)
     
-    - `human_feedback_requests`
-      - `id` (uuid, primary key)
-      - `user_id` (uuid, references profiles)
-      - `submission_id` (uuid) - references writing_submissions or speaking_recordings
-      - `submission_type` (text) - 'writing', 'speaking'
-      - `status` (text) - 'pending', 'in_review', 'completed'
-      - `instructor_id` (uuid)
-      - `feedback` (text)
-      - `detailed_scores` (jsonb)
-      - `price` (decimal)
-      - `requested_at` (timestamp)
-      - `completed_at` (timestamp)
 
   2. Security
     - Enable RLS on all tables
@@ -193,8 +181,6 @@ CREATE TABLE IF NOT EXISTS writing_submissions (
   lexical_resource decimal,
   grammatical_range decimal,
   ai_feedback jsonb DEFAULT '{}',
-  human_feedback_requested boolean DEFAULT false,
-  human_feedback text,
   created_at timestamptz DEFAULT now()
 );
 
@@ -268,21 +254,6 @@ CREATE TABLE IF NOT EXISTS daily_tips (
   created_at timestamptz DEFAULT now()
 );
 
--- Create human_feedback_requests table
-CREATE TABLE IF NOT EXISTS human_feedback_requests (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
-  submission_id uuid NOT NULL,
-  submission_type text NOT NULL CHECK (submission_type IN ('writing', 'speaking')),
-  status text DEFAULT 'pending' CHECK (status IN ('pending', 'in_review', 'completed')),
-  instructor_id uuid,
-  feedback text,
-  detailed_scores jsonb DEFAULT '{}',
-  price decimal DEFAULT 15.00,
-  requested_at timestamptz DEFAULT now(),
-  completed_at timestamptz
-);
-
 -- Enable Row Level Security
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE test_sessions ENABLE ROW LEVEL SECURITY;
@@ -293,7 +264,6 @@ ALTER TABLE reading_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE listening_responses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE study_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_tips ENABLE ROW LEVEL SECURITY;
-ALTER TABLE human_feedback_requests ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for profiles
 CREATE POLICY "Users can read own profile"
@@ -373,13 +343,6 @@ CREATE POLICY "Anyone can read active daily tips"
   FOR SELECT
   TO authenticated
   USING (is_active = true);
-
--- Create policies for human_feedback_requests
-CREATE POLICY "Users can manage own feedback requests"
-  ON human_feedback_requests
-  FOR ALL
-  TO authenticated
-  USING (user_id = auth.uid());
 
 -- Insert sample daily tips
 INSERT INTO daily_tips (category, title, content, difficulty_level) VALUES
