@@ -160,69 +160,43 @@ export const testService = {
     return data || [];
   },
 
-  // Mock AI feedback generation for writing
+  // Generate default writing band score (ready for GPT API integration)
   async generateWritingFeedback(content: string, taskType: 'task1' | 'task2') {
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
+    // Ready for GPT API integration - currently returns default scores
     const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
-    const baseScore = Math.min(9, Math.max(4, 5 + (wordCount / 50)));
+
+    // Default band scores for now
+    const defaultBandScore = 6.5;
 
     return {
-      band_score: Number((baseScore + Math.random() * 1.5).toFixed(1)),
-      task_response: Number((baseScore + Math.random() * 1).toFixed(1)),
-      coherence_cohesion: Number((baseScore + Math.random() * 1).toFixed(1)),
-      lexical_resource: Number((baseScore + Math.random() * 1).toFixed(1)),
-      grammatical_range: Number((baseScore + Math.random() * 1).toFixed(1)),
+      band_score: defaultBandScore,
+      task_response: defaultBandScore,
+      coherence_cohesion: defaultBandScore,
+      lexical_resource: defaultBandScore,
+      grammatical_range: defaultBandScore,
       ai_feedback: {
-        strengths: [
-          "Good task achievement with clear position",
-          "Appropriate use of examples and explanations",
-          "Generally well-organized structure"
-        ],
-        improvements: [
-          "Consider using more varied cohesive devices",
-          "Expand vocabulary with more sophisticated synonyms",
-          "Work on complex sentence structures"
-        ],
-        suggestions: [
-          "Practice using conditional sentences",
-          "Learn more academic vocabulary",
-          "Focus on paragraph transitions"
-        ]
+        strengths: [],
+        improvements: [],
+        suggestions: []
       }
     };
   },
 
-  // Mock AI feedback generation for speaking
+  // Generate default speaking band score (ready for GPT API integration)
   async generateSpeakingFeedback(partNumber: number) {
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const baseScore = 6 + Math.random() * 2;
+    // Ready for GPT API integration - currently returns default scores
+    const defaultBandScore = 6.5;
 
     return {
-      band_score: Number(baseScore.toFixed(1)),
-      fluency_coherence: Number((baseScore + Math.random() * 0.5).toFixed(1)),
-      pronunciation: Number((baseScore + Math.random() * 0.5).toFixed(1)),
-      lexical_resource: Number((baseScore + Math.random() * 0.5).toFixed(1)),
-      grammatical_range: Number((baseScore + Math.random() * 0.5).toFixed(1)),
+      band_score: defaultBandScore,
+      fluency_coherence: defaultBandScore,
+      pronunciation: defaultBandScore,
+      lexical_resource: defaultBandScore,
+      grammatical_range: defaultBandScore,
       ai_feedback: {
-        strengths: [
-          "Good fluency with natural rhythm",
-          "Clear pronunciation of most sounds",
-          "Appropriate use of vocabulary"
-        ],
-        improvements: [
-          "Work on specific sound pronunciation",
-          "Use more varied vocabulary",
-          "Practice complex grammatical structures"
-        ],
-        suggestions: [
-          "Record yourself daily",
-          "Practice tongue twisters",
-          "Learn idiomatic expressions"
-        ]
+        strengths: [],
+        improvements: [],
+        suggestions: []
       }
     };
   },

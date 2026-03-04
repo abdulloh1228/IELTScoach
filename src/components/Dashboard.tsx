@@ -22,12 +22,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     { section: 'Listening', score: 7.0, date: '1 week ago' },
   ];
 
-  const dailyTips = [
-    "Practice using complex sentences with subordinating conjunctions",
-    "Expand your vocabulary with academic word lists",
-    "Record yourself speaking to improve fluency and pronunciation"
-  ];
-
   return (
     <div className="space-y-8">
       {/* Welcome Section */}
@@ -112,61 +106,32 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </button>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Recent Scores */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Scores</h2>
-          <div className="space-y-4">
-            {recentScores.map((score, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <span className="font-medium text-gray-800">{score.section}</span>
-                  <p className="text-sm text-gray-600">{score.date}</p>
-                </div>
-                <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                  score.score >= 8 ? 'bg-green-100 text-green-800' :
-                  score.score >= 7 ? 'bg-blue-100 text-blue-800' :
-                  score.score >= 6 ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {score.score}
-                </div>
+      {/* Recent Scores */}
+      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Scores</h2>
+        <div className="space-y-4">
+          {recentScores.map((score, index) => (
+            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div>
+                <span className="font-medium text-gray-800">{score.section}</span>
+                <p className="text-sm text-gray-600">{score.date}</p>
               </div>
-            ))}
-          </div>
-          <button 
-            onClick={() => onNavigate('progress')}
-            className="w-full mt-4 text-blue-600 hover:text-blue-700 font-medium"
-          >
-            View Full Progress →
-          </button>
-        </div>
-
-        {/* Daily Tips */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Daily Tips</h2>
-          <div className="space-y-4">
-            {dailyTips.map((tip, index) => (
-              <div key={index} className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
-                <div className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
-                  {index + 1}
-                </div>
-                <p className="text-gray-700 text-sm">{tip}</p>
+              <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                score.score >= 8 ? 'bg-green-100 text-green-800' :
+                score.score >= 7 ? 'bg-blue-100 text-blue-800' :
+                score.score >= 6 ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {score.score}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      </div>
-
-      {/* Call to Action */}
-      <div className="bg-gradient-to-r from-teal-500 to-blue-600 rounded-xl p-8 text-center text-white">
-        <h2 className="text-2xl font-bold mb-2">Ready for a Full Mock Exam?</h2>
-        <p className="text-blue-100 mb-6">Take a complete IELTS practice test and get detailed AI feedback on all four sections.</p>
-        <button 
-          onClick={() => onNavigate('exam-selector')}
-          className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+        <button
+          onClick={() => onNavigate('progress')}
+          className="w-full mt-4 text-blue-600 hover:text-blue-700 font-medium"
         >
-          Start Mock Exam
+          View Full Progress →
         </button>
       </div>
     </div>
