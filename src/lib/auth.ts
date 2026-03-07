@@ -64,7 +64,7 @@ export const authService = {
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       console.log('User profile:', profile);
       return {
@@ -96,10 +96,9 @@ export const authService = {
 
   // Listen to auth changes
   onAuthStateChange(callback: (user: AuthUser | null) => void) {
-    return supabase.auth.onAuthStateChange(async (event, session) => {
+    return supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        const user = await this.getCurrentUser();
-        callback(user);
+        this.getCurrentUser().then(user => callback(user));
       } else {
         callback(null);
       }
