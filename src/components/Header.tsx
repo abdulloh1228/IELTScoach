@@ -34,9 +34,9 @@ export default function Header({ onNavigate, onAuthClick }: HeaderProps) {
             </div>
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
-                AI IELTS Instructor
+                MockExaminer
               </h1>
-              <p className="text-xs text-gray-600 hidden sm:block">Your AI-Powered IELTS Preparation Platform</p>
+              <p className="text-xs text-gray-600 hidden sm:block">AI-Powered IELTS Mock Exams</p>
             </div>
           </div>
 

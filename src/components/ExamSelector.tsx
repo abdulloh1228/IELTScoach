@@ -62,12 +62,19 @@ export default function ExamSelector({ onNavigate }: ExamSelectorProps) {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Full IELTS MOCK Exam </h1>
-        <p className="text-gray-600 max-w-2xl mx-auto">
-          The IELTS test takes a total of 2 hours and 45 minutes. This includes the Listening, Reading, and Writing sections, which are completed in one sitting without breaks. Get <b>instant AI feedback</b> and detailed analysis 
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">Full Mock Test</h1>
+        <p className="text-gray-600 max-w-2xl mx-auto mb-6">
+          The IELTS test takes a total of 2 hours and 45 minutes. This includes the Listening, Reading, and Writing sections, which are completed in one sitting without breaks. Get <b>instant AI feedback</b> and detailed analysis
           to improve your performance in specific sections.
         </p>
+        <button
+          onClick={() => handleExamStart('FullMockTest')}
+          className="inline-flex items-center space-x-2 bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
+        >
+          <span>Start Full Mock Test</span>
+          <ArrowRight size={20} />
+        </button>
       </div>
 
       {/* Exam Options */}
