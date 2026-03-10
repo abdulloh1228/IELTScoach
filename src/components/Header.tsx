@@ -23,11 +23,11 @@ export default function Header({ onNavigate, onAuthClick }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-100">
+    <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800 transition-colors">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div 
+          <div
             className="flex items-center space-x-2 cursor-pointer"
             onClick={() => onNavigate('dashboard')}
           >
@@ -38,33 +38,33 @@ export default function Header({ onNavigate, onAuthClick }: HeaderProps) {
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
                 MockExaminer
               </h1>
-              <p className="text-xs text-gray-600 hidden sm:block">AI-Powered IELTS Mock Exams</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 hidden sm:block">AI-Powered IELTS Mock Exams</p>
             </div>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-8">
-            <button 
+            <button
               onClick={() => onNavigate('dashboard')}
-              className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
             >
               Dashboard
             </button>
-            <button 
+            <button
               onClick={() => onNavigate('exam-selector')}
-              className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
             >
               Mock Exams
             </button>
-            <button 
+            <button
               onClick={() => onNavigate('progress')}
-              className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
             >
               Progress
             </button>
-            <button 
+            <button
               onClick={() => onNavigate('profile')}
-              className="text-gray-700 hover:text-blue-600 transition-colors font-medium"
+              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
             >
               Profile
             </button>

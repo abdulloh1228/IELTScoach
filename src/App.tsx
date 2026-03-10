@@ -25,10 +25,10 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center transition-colors">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading... (Check console for details)</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading... (Check console for details)</p>
         </div>
       </div>
     );
@@ -36,35 +36,35 @@ function AppContent() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors">
         <Header onNavigate={setCurrentPage} onAuthClick={() => setShowAuthModal(true)} />
         <main className="container mx-auto px-4 py-8">
           <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-5xl font-bold text-gray-900 mb-6">
+            <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">
               Master IELTS with AI-Powered Preparation
             </h1>
-            <p className="text-xl text-gray-600 mb-8">
+            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
               Get instant feedback, personalized study plans, and expert guidance to achieve your target IELTS score.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-lg"
+                className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors font-semibold text-lg"
               >
                 Start Free Practice
               </button>
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="border-2 border-blue-600 text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors font-semibold text-lg"
+                className="border-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 px-8 py-4 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-800 transition-colors font-semibold text-lg"
               >
                 Sign In
               </button>
             </div>
           </div>
         </main>
-        <AuthModal 
-          isOpen={showAuthModal} 
-          onClose={() => setShowAuthModal(false)} 
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
         />
       </div>
     );
@@ -94,39 +94,39 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors">
       <Header onNavigate={setCurrentPage} onAuthClick={() => setShowAuthModal(true)} />
       <main className="container mx-auto px-4 py-8">
         {renderPage()}
       </main>
-      
+
       {/* Bottom Navigation for Mobile */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 lg:hidden transition-colors">
         <div className="flex justify-around py-2">
           <button
             onClick={() => setCurrentPage('dashboard')}
-            className={`flex flex-col items-center p-2 ${currentPage === 'dashboard' ? 'text-blue-600' : 'text-gray-600'}`}
+            className={`flex flex-col items-center p-2 ${currentPage === 'dashboard' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
           >
             <BookOpen size={20} />
             <span className="text-xs mt-1">Home</span>
           </button>
           <button
             onClick={() => setCurrentPage('exam-selector')}
-            className={`flex flex-col items-center p-2 ${currentPage === 'exam-selector' ? 'text-blue-600' : 'text-gray-600'}`}
+            className={`flex flex-col items-center p-2 ${currentPage === 'exam-selector' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
           >
             <Settings size={20} />
             <span className="text-xs mt-1">Exams</span>
           </button>
           <button
             onClick={() => setCurrentPage('progress')}
-            className={`flex flex-col items-center p-2 ${currentPage === 'progress' ? 'text-blue-600' : 'text-gray-600'}`}
+            className={`flex flex-col items-center p-2 ${currentPage === 'progress' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
           >
             <BarChart3 size={20} />
             <span className="text-xs mt-1">Progress</span>
           </button>
           <button
             onClick={() => setCurrentPage('profile')}
-            className={`flex flex-col items-center p-2 ${currentPage === 'profile' ? 'text-blue-600' : 'text-gray-600'}`}
+            className={`flex flex-col items-center p-2 ${currentPage === 'profile' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`}
           >
             <User size={20} />
             <span className="text-xs mt-1">Profile</span>
