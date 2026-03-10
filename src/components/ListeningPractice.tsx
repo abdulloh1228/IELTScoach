@@ -10,7 +10,7 @@ interface ListeningPracticeProps {
   testId?: string;
 }
 
-export default function ListeningPractice({ onNavigate, testId = 'test-1' }: ListeningPracticeProps) {
+export default function ListeningPractice({ onNavigate, testId }: ListeningPracticeProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -27,7 +27,21 @@ export default function ListeningPractice({ onNavigate, testId = 'test-1' }: Lis
     const loadTest = async () => {
       try {
         setLoading(true);
-        const test = await fetchListeningTest(testId);
+        let test;
+
+        if (testId) {
+          test = await fetchListeningTest(testId);
+        } else {
+          const { fetchAllListeningTests } = await import('../lib/listeningTestService');
+          const allTests = await fetchAllListeningTests();
+
+          if (allTests.length === 0) {
+            throw new Error('No listening tests available');
+          }
+
+          test = await fetchListeningTest(allTests[0].id);
+        }
+
         setListeningTest(test);
         setError(null);
       } catch (err) {
