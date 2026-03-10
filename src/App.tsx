@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BookOpen, User, BarChart3, Settings } from 'lucide-react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import AuthModal from './components/AuthModal';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -143,9 +144,11 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

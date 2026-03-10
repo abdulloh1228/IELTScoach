@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-import type { Profile } from './supabase';
 
 export interface ProgressData {
   overallScore: number;
@@ -13,6 +12,7 @@ export interface ProgressData {
     date: string;
     testType: string;
     score: number;
+    bandScore: number;
   }>;
   studyStats: {
     totalHours: number;
@@ -25,98 +25,67 @@ export interface ProgressData {
 }
 
 export const progressService = {
-  // Get comprehensive progress data
   async getUserProgress(): Promise<ProgressData> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // Get user profile
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    // Get recent test sessions
-    const { data: testSessions } = await supabase
-      .from('test_sessions')
-      .select('*')
+    const { data: testAttempts } = await supabase
+      .from('test_attempts')
+      .select(
+        `
+        *,
+        tests (
+          test_type
+        )
+      `
+      )
       .eq('user_id', user.id)
-      .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
-      .limit(10);
-
-    // Get recent writing submissions
-    const { data: writingSubmissions } = await supabase
-      .from('writing_submissions')
-      .select('band_score, created_at')
-      .eq('user_id', user.id)
+      .eq('completion_status', 'completed')
       .not('band_score', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(5);
+      .order('completed_at', { ascending: false });
 
-    // Get recent speaking recordings
-    const { data: speakingRecordings } = await supabase
-      .from('speaking_recordings')
-      .select('band_score, created_at')
-      .eq('user_id', user.id)
-      .not('band_score', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    const attempts = testAttempts || [];
 
-    // Get recent reading responses
-    const { data: readingResponses } = await supabase
-      .from('reading_responses')
-      .select('band_score, created_at')
-      .eq('user_id', user.id)
-      .not('band_score', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    // Get recent listening responses
-    const { data: listeningResponses } = await supabase
-      .from('listening_responses')
-      .select('band_score, created_at')
-      .eq('user_id', user.id)
-      .not('band_score', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    // Calculate section averages
-    const writingAvg = this.calculateAverage(writingSubmissions?.map(s => s.band_score) || []);
-    const speakingAvg = this.calculateAverage(speakingRecordings?.map(s => s.band_score) || []);
-    const readingAvg = this.calculateAverage(readingResponses?.map(s => s.band_score) || []);
-    const listeningAvg = this.calculateAverage(listeningResponses?.map(s => s.band_score) || []);
+    const writingAttempts = attempts.filter((a: any) => a.tests?.test_type === 'writing');
+    const readingAttempts = attempts.filter((a: any) => a.tests?.test_type === 'reading');
+    const speakingAttempts = attempts.filter((a: any) => a.tests?.test_type === 'speaking');
+    const listeningAttempts = attempts.filter((a: any) => a.tests?.test_type === 'listening');
 
     const sectionScores = {
-      writing: writingAvg,
-      reading: readingAvg,
-      speaking: speakingAvg,
-      listening: listeningAvg,
+      writing: this.calculateAverage(writingAttempts.map((a: any) => a.band_score)),
+      reading: this.calculateAverage(readingAttempts.map((a: any) => a.band_score)),
+      speaking: this.calculateAverage(speakingAttempts.map((a: any) => a.band_score)),
+      listening: this.calculateAverage(listeningAttempts.map((a: any) => a.band_score)),
     };
 
     const overallScore = this.calculateAverage(Object.values(sectionScores).filter(score => score > 0));
 
-    // Calculate improvement
-    const firstScore = profile?.current_score || 0;
-    const improvement = overallScore > 0 ? ((overallScore - firstScore) / firstScore) * 100 : 0;
+    const totalTimeSpent = attempts.reduce((sum: number, a: any) => sum + (a.time_spent || 0), 0);
+    const totalHours = Math.round((totalTimeSpent / 3600) * 10) / 10;
 
-    // Generate recommendations based on weak areas
+    const testsCompleted = attempts.length;
+
+    const firstScore = attempts.length > 0 ? attempts[attempts.length - 1].band_score : overallScore;
+    const improvement = firstScore > 0 ? ((overallScore - firstScore) / firstScore) * 100 : 0;
+
     const weakAreas = this.identifyWeakAreas(sectionScores);
     const recommendations = this.generateRecommendations(weakAreas);
 
     return {
       overallScore,
       sectionScores,
-      recentTests: (testSessions || []).map(session => ({
-        date: session.completed_at || session.created_at,
-        testType: session.test_type,
-        score: session.overall_score || 0,
+      recentTests: attempts.slice(0, 10).map((a: any) => ({
+        date: a.completed_at || a.created_at,
+        testType: a.tests?.test_type || 'Unknown',
+        score: a.score || 0,
+        bandScore: a.band_score || 0,
       })),
       studyStats: {
-        totalHours: profile?.total_study_hours || 0,
-        testsCompleted: profile?.tests_completed || 0,
-        currentStreak: profile?.current_streak || 0,
+        totalHours,
+        testsCompleted,
+        currentStreak: 0,
         improvement: Math.round(improvement),
       },
       weakAreas,
@@ -124,57 +93,44 @@ export const progressService = {
     };
   },
 
-  // Update user statistics
-  async updateUserStats(updates: Partial<Profile>): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
+  async saveTestAttempt(testId: string, bandScore: number, score: number, timeSpent: number, aiFeedback: any) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', user.id);
+    const { data: attempt, error } = await supabase
+      .from('test_attempts')
+      .insert({
+        user_id: user.id,
+        test_id: testId,
+        band_score: bandScore,
+        score: score,
+        time_spent: timeSpent,
+        completion_status: 'completed',
+        ai_feedback: aiFeedback,
+        completed_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return attempt;
+  },
+
+  async saveUserAnswers(attemptId: string, answers: Array<{ questionId: string; answer: string; isCorrect: boolean }>) {
+    const userAnswers = answers.map(a => ({
+      attempt_id: attemptId,
+      question_id: a.questionId,
+      user_answer: a.answer,
+      is_correct: a.isCorrect,
+    }));
+
+    const { error } = await supabase.from('user_answers').insert(userAnswers);
 
     if (error) throw error;
   },
 
-  // Increment test completion count
-  async incrementTestCompletion(): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('tests_completed')
-      .eq('id', user.id)
-      .single();
-
-    if (profile) {
-      await this.updateUserStats({
-        tests_completed: (profile.tests_completed || 0) + 1,
-      });
-    }
-  },
-
-  // Add study time
-  async addStudyTime(minutes: number): Promise<void> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('total_study_hours')
-      .eq('id', user.id)
-      .single();
-
-    if (profile) {
-      const additionalHours = minutes / 60;
-      await this.updateUserStats({
-        total_study_hours: (profile.total_study_hours || 0) + additionalHours,
-      });
-    }
-  },
-
-  // Helper functions
   calculateAverage(scores: number[]): number {
     if (scores.length === 0) return 0;
     const validScores = scores.filter(score => score > 0);
@@ -184,12 +140,12 @@ export const progressService = {
 
   identifyWeakAreas(sectionScores: any): string[] {
     const areas = [];
-    const threshold = 6.5; // Below this is considered weak
+    const threshold = 6.5;
 
-    if (sectionScores.writing < threshold) areas.push('Writing');
-    if (sectionScores.reading < threshold) areas.push('Reading');
-    if (sectionScores.speaking < threshold) areas.push('Speaking');
-    if (sectionScores.listening < threshold) areas.push('Listening');
+    if (sectionScores.writing > 0 && sectionScores.writing < threshold) areas.push('Writing');
+    if (sectionScores.reading > 0 && sectionScores.reading < threshold) areas.push('Reading');
+    if (sectionScores.speaking > 0 && sectionScores.speaking < threshold) areas.push('Speaking');
+    if (sectionScores.listening > 0 && sectionScores.listening < threshold) areas.push('Listening');
 
     return areas;
   },

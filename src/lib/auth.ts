@@ -7,9 +7,18 @@ export interface AuthUser {
   profile?: Profile;
 }
 
+function generateAccessCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 export const authService = {
   // Sign up with email and password
-  async signUp(email: string, password: string, fullName: string) {
+  async signUp(email: string, password: string, fullName: string, phoneNumber: string) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -17,20 +26,40 @@ export const authService = {
 
     if (error) throw error;
 
-    // Create profile after successful signup
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          full_name: fullName,
-          email: email,
-        });
+    // Generate unique access code
+    let accessCode = generateAccessCode();
+    let isUnique = false;
 
-      if (profileError) throw profileError;
+    // Ensure access code is unique
+    while (!isUnique) {
+      const { data: existing } = await supabase
+        .from('users')
+        .select('access_code')
+        .eq('access_code', accessCode)
+        .maybeSingle();
+
+      if (!existing) {
+        isUnique = true;
+      } else {
+        accessCode = generateAccessCode();
+      }
     }
 
-    return data;
+    // Create user record after successful signup
+    if (data.user) {
+      const { error: userError } = await supabase
+        .from('users')
+        .insert({
+          id: data.user.id,
+          email: email,
+          phone_number: phoneNumber,
+          access_code: accessCode,
+        });
+
+      if (userError) throw userError;
+    }
+
+    return { ...data, accessCode };
   },
 
   // Sign in with email and password
@@ -53,24 +82,21 @@ export const authService = {
   // Get current user
   async getCurrentUser(): Promise<AuthUser | null> {
     try {
-      console.log('Getting current user...');
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('Supabase user:', user);
-      
+
       if (!user) return null;
 
-      // Get user profile
-      const { data: profile } = await supabase
-        .from('profiles')
+      // Get user data
+      const { data: userData } = await supabase
+        .from('users')
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
 
-      console.log('User profile:', profile);
       return {
         id: user.id,
         email: user.email!,
-        profile: profile || undefined,
+        profile: userData || undefined,
       };
     } catch (error) {
       console.error('Error getting current user:', error);

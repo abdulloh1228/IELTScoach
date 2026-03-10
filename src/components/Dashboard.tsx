@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { PenTool, BookOpen, Mic, Headphones, TrendingUp, Clock, Target, Award } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { progressService, type ProgressData } from '../lib/progressService';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -10,17 +11,30 @@ interface DashboardProps {
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const { user } = useAuth();
-  const userName = user?.profile?.full_name?.split(' ')[0] || 'Student';
-  const targetScore = user?.profile?.target_score || 8.0;
-  const currentScore = user?.profile?.current_score || 7.2;
-  const testsCompleted = user?.profile?.tests_completed || 24;
+  const [progressData, setProgressData] = useState<ProgressData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const recentScores = [
-    { section: 'Writing', score: 7.5, date: '2 days ago' },
-    { section: 'Reading', score: 8.0, date: '5 days ago' },
-    { section: 'Speaking', score: 6.5, date: '1 week ago' },
-    { section: 'Listening', score: 7.0, date: '1 week ago' },
-  ];
+  useEffect(() => {
+    if (user) {
+      loadProgressData();
+    }
+  }, [user]);
+
+  const loadProgressData = async () => {
+    try {
+      const data = await progressService.getUserProgress();
+      setProgressData(data);
+    } catch (error) {
+      console.error('Error loading progress:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const userName = user?.email?.split('@')[0] || 'Student';
+  const targetScore = 8.0;
+  const currentScore = progressData?.overallScore || 0;
+  const testsCompleted = progressData?.studyStats.testsCompleted || 0;
 
   return (
     <div className="space-y-8">
@@ -109,24 +123,46 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       {/* Recent Scores */}
       <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Recent Scores</h2>
-        <div className="space-y-4">
-          {recentScores.map((score, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <div>
-                <span className="font-medium text-gray-800">{score.section}</span>
-                <p className="text-sm text-gray-600">{score.date}</p>
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          </div>
+        ) : progressData && progressData.recentTests.length > 0 ? (
+          <div className="space-y-4">
+            {progressData.recentTests.slice(0, 4).map((test, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <span className="font-medium text-gray-800 capitalize">{test.testType}</span>
+                  <p className="text-sm text-gray-600">
+                    {new Date(test.date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </p>
+                </div>
+                <div
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                    test.bandScore >= 8
+                      ? 'bg-green-100 text-green-800'
+                      : test.bandScore >= 7
+                      ? 'bg-blue-100 text-blue-800'
+                      : test.bandScore >= 6
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}
+                >
+                  {test.bandScore.toFixed(1)}
+                </div>
               </div>
-              <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                score.score >= 8 ? 'bg-green-100 text-green-800' :
-                score.score >= 7 ? 'bg-blue-100 text-blue-800' :
-                score.score >= 6 ? 'bg-yellow-100 text-yellow-800' :
-                'bg-red-100 text-red-800'
-              }`}>
-                {score.score}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <p>No tests completed yet</p>
+            <p className="text-sm mt-2">Start practicing to see your scores here</p>
+          </div>
+        )}
         <button
           onClick={() => onNavigate('progress')}
           className="w-full mt-4 text-blue-600 hover:text-blue-700 font-medium"

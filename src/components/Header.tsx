@@ -1,6 +1,7 @@
 import React from 'react';
-import { GraduationCap, Menu, User, Bell, LogOut } from 'lucide-react';
+import { GraduationCap, Menu, User, Bell, LogOut, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -11,6 +12,7 @@ interface HeaderProps {
 
 export default function Header({ onNavigate, onAuthClick }: HeaderProps) {
   const { user, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const handleSignOut = async () => {
     try {
@@ -70,34 +72,41 @@ export default function Header({ onNavigate, onAuthClick }: HeaderProps) {
 
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
+            <button
+              onClick={toggleTheme}
+              className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            >
+              {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+            </button>
             {user ? (
               <>
-                <button className="p-2 text-gray-600 hover:text-blue-600 transition-colors">
+                <button className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                   <Bell size={20} />
                 </button>
-                <button 
+                <button
                   onClick={() => onNavigate('profile')}
-                  className="p-2 text-gray-600 hover:text-blue-600 transition-colors"
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
                   <User size={20} />
                 </button>
-                <button 
+                <button
                   onClick={handleSignOut}
-                  className="p-2 text-gray-600 hover:text-red-600 transition-colors"
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                   title="Sign Out"
                 >
                   <LogOut size={20} />
                 </button>
               </>
             ) : (
-              <button 
+              <button
                 onClick={onAuthClick}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
                 Sign In
               </button>
             )}
-            <button className="lg:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors">
+            <button className="lg:hidden p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               <Menu size={20} />
             </button>
           </div>
