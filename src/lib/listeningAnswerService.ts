@@ -46,19 +46,19 @@ export async function submitListeningAnswers(
   // Calculate score
   const result = await calculateListeningScore(testId, answers);
 
-  // Save result
-  const { data: savedResult, error: resultError } = await supabase
-    .from('listening_results')
+  // Save result to listening_attempts
+  const { data: savedAttempt, error: attemptError } = await supabase
+    .from('listening_attempts')
     .insert({
       user_id: user.id,
       test_id: testId,
-      score: result.score,
+      correct_answers: result.correctAnswers,
       band_score: result.bandScore,
     })
     .select()
     .maybeSingle();
 
-  if (resultError) throw resultError;
+  if (attemptError) throw attemptError;
 
   return result;
 }
@@ -80,14 +80,17 @@ async function calculateListeningScore(
   const questionIds = (questionsData || []).map(q => q.id);
   const { data: correctAnswersData, error: answersError } = await supabase
     .from('listening_answers')
-    .select('question_id, correct_answer')
+    .select('question_id, correct_answer, acceptable_answers')
     .in('question_id', questionIds);
 
   if (answersError) throw answersError;
 
   // Create a map of correct answers
   const correctAnswersMap = new Map(
-    (correctAnswersData || []).map(a => [a.question_id, a.correct_answer])
+    (correctAnswersData || []).map(a => [a.question_id, {
+      correct: a.correct_answer,
+      acceptable: a.acceptable_answers || []
+    }])
   );
 
   // Calculate score and detailed results
@@ -97,9 +100,17 @@ async function calculateListeningScore(
   (questionsData || []).forEach(question => {
     const userAnswerObj = userAnswers.find(a => a.questionId === question.id);
     const userAnswer = userAnswerObj?.userAnswer || '';
-    const correctAnswer = correctAnswersMap.get(question.id) || '';
+    const answerData = correctAnswersMap.get(question.id);
+    const correctAnswer = answerData?.correct || '';
+    const acceptableAnswers = answerData?.acceptable || [];
 
-    const isCorrect = normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer);
+    const normalizedUserAnswer = normalizeAnswer(userAnswer);
+    const normalizedCorrect = normalizeAnswer(correctAnswer);
+    const normalizedAcceptable = acceptableAnswers.map((ans: string) => normalizeAnswer(ans));
+
+    const isCorrect =
+      normalizedUserAnswer === normalizedCorrect ||
+      normalizedAcceptable.includes(normalizedUserAnswer);
 
     if (isCorrect) correctCount++;
 

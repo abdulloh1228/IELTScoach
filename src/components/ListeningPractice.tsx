@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, RotateCcw, Volume2, Clock, CheckCircle, X, Loader2 } from 'lucide-react';
+import { Volume2, CheckCircle, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { fetchListeningTest, ListeningTestWithQuestions } from '../lib/listeningTestService';
 import { submitListeningAnswers, ScoringResult } from '../lib/listeningAnswerService';
+import QuestionRenderer from './QuestionRenderer';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -11,9 +12,6 @@ interface ListeningPracticeProps {
 }
 
 export default function ListeningPractice({ onNavigate, testId }: ListeningPracticeProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: string }>({});
   const [showResults, setShowResults] = useState(false);
   const [listeningTest, setListeningTest] = useState<ListeningTestWithQuestions | null>(null);
@@ -21,7 +19,11 @@ export default function ListeningPractice({ onNavigate, testId }: ListeningPract
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(1800);
+  const [testStarted, setTestStarted] = useState(false);
+  const [audioEnded, setAudioEnded] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const loadTest = async () => {
@@ -43,6 +45,7 @@ export default function ListeningPractice({ onNavigate, testId }: ListeningPract
         }
 
         setListeningTest(test);
+        setTimeRemaining(test.duration);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load test');
@@ -58,38 +61,49 @@ export default function ListeningPractice({ onNavigate, testId }: ListeningPract
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-    };
-
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-    };
-
     const handleEnded = () => {
-      setIsPlaying(false);
+      setAudioEnded(true);
     };
 
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
 
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
   }, []);
 
-  const handlePlay = () => {
-    if (!audioRef.current) return;
+  useEffect(() => {
+    if (testStarted && !showResults) {
+      timerRef.current = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            handleAutoSubmit();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
 
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+        }
+      };
     }
-    setIsPlaying(!isPlaying);
+  }, [testStarted, showResults]);
+
+  const startTest = () => {
+    if (audioRef.current) {
+      audioRef.current.play();
+      setTestStarted(true);
+    }
+  };
+
+  const handleAutoSubmit = async () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    await handleSubmit();
   };
 
   const handleAnswerChange = (questionId: string, answer: string) => {
@@ -112,22 +126,15 @@ export default function ListeningPractice({ onNavigate, testId }: ListeningPract
       const result = await submitListeningAnswers(listeningTest.id, answerSubmissions);
       setScoringResult(result);
       setShowResults(true);
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit answers');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleSkipSeconds = (seconds: number) => {
-    if (!audioRef.current) return;
-    audioRef.current.currentTime = Math.max(0, currentTime + seconds);
-  };
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const formatTime = (seconds: number) => {
@@ -175,21 +182,19 @@ export default function ListeningPractice({ onNavigate, testId }: ListeningPract
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Listening Test Results</h1>
           <button
-            onClick={() => {setShowResults(false); setAnswers({})}}
+            onClick={() => onNavigate('exam-selector')}
             className="bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
           >
-            Try Another Test
+            Back to Exams
           </button>
         </div>
 
-        {/* Score Overview */}
         <div className="bg-gradient-to-r from-orange-600 to-red-600 dark:from-orange-700 dark:to-red-700 rounded-xl p-8 text-white text-center">
           <h2 className="text-2xl font-semibold mb-2">Your Listening Band Score</h2>
           <div className="text-6xl font-bold mb-4">{scoringResult.bandScore.toFixed(1)}</div>
           <p className="text-orange-100 dark:text-orange-200">{scoringResult.correctAnswers} out of {scoringResult.totalQuestions} questions answered correctly</p>
         </div>
 
-        {/* Detailed Results */}
         <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg border border-gray-100 dark:border-gray-800">
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Answer Review</h3>
           <div className="space-y-4">
@@ -215,157 +220,161 @@ export default function ListeningPractice({ onNavigate, testId }: ListeningPract
     );
   }
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+  if (!testStarted) {
+    return (
+      <div className="space-y-8 max-w-3xl mx-auto">
+        <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{listeningTest.title}</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">IELTS Listening Test Section</p>
-        </div>
-        <button
-          onClick={() => onNavigate('exam-selector')}
-          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-        >
-          ← Back to Exams
-        </button>
-      </div>
-
-      {/* Audio Player */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg border border-gray-100 dark:border-gray-800">
-        <div className="flex items-center space-x-2 mb-4">
-          <Volume2 className="text-orange-600 dark:text-orange-400" size={20} />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Audio Player</h2>
+          <button
+            onClick={() => onNavigate('exam-selector')}
+            className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+          >
+            ← Back to Exams
+          </button>
         </div>
 
-        <div className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900 dark:to-red-900 rounded-lg p-6 border border-orange-100 dark:border-orange-800">
-          <audio
-            ref={audioRef}
-            src={listeningTest.audioUrl}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-          />
+        <div className="bg-white dark:bg-gray-900 rounded-xl p-8 shadow-lg border border-gray-100 dark:border-gray-800">
+          <div className="flex items-center space-x-3 mb-6">
+            <Volume2 className="text-orange-600 dark:text-orange-400" size={28} />
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">IELTS Listening Test</h2>
+          </div>
 
-          <div className="flex items-center justify-center space-x-6 mb-4">
-            <button
-              onClick={() => handleSkipSeconds(-10)}
-              className="p-2 bg-white dark:bg-gray-700 rounded-full shadow hover:shadow-md transition-shadow text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400"
-            >
-              <RotateCcw size={20} />
-            </button>
+          <div className="space-y-4 mb-8">
+            <div className="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500 dark:border-blue-400 p-4 rounded">
+              <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Test Structure</h3>
+              <ul className="text-blue-700 dark:text-blue-300 space-y-1 text-sm">
+                <li>• 4 Sections (40 questions total)</li>
+                <li>• Time: {Math.floor(listeningTest.duration / 60)} minutes</li>
+                <li>• All sections displayed on one page</li>
+              </ul>
+            </div>
 
-            <button
-              onClick={handlePlay}
-              className="w-16 h-16 bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 rounded-full flex items-center justify-center text-white transition-colors shadow-lg"
-            >
-              {isPlaying ? <Pause size={24} /> : <Play size={24} />}
-            </button>
+            <div className="bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-500 dark:border-yellow-400 p-4 rounded">
+              <h3 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Important Instructions</h3>
+              <ul className="text-yellow-700 dark:text-yellow-300 space-y-1 text-sm">
+                <li>• Audio will play automatically when you start</li>
+                <li>• You can only listen ONCE - no pause, replay, or seek</li>
+                <li>• Audio plays continuously from Part 1 to Part 4</li>
+                <li>• Timer starts when audio begins</li>
+                <li>• Auto-submit when time expires</li>
+                <li>• You can scroll through all questions during the test</li>
+              </ul>
+            </div>
 
-            <button
-              onClick={() => handleSkipSeconds(10)}
-              className="p-2 bg-white dark:bg-gray-700 rounded-full shadow hover:shadow-md transition-shadow text-gray-700 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-400"
-            >
-              <RotateCcw size={20} className="rotate-180" />
-            </button>
-
-            <div className="flex items-center space-x-2">
-              <Clock size={16} className="text-gray-600 dark:text-gray-400" />
-              <span className="font-mono text-gray-700 dark:text-gray-300 text-sm">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </span>
+            <div className="bg-green-50 dark:bg-green-900 border-l-4 border-green-500 dark:border-green-400 p-4 rounded">
+              <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Tips</h3>
+              <ul className="text-green-700 dark:text-green-300 space-y-1 text-sm">
+                <li>• Read all questions before starting</li>
+                <li>• Use quality headphones</li>
+                <li>• Write answers as you listen</li>
+                <li>• Check spelling carefully</li>
+              </ul>
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <div
-            className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 cursor-pointer"
-            onClick={(e) => {
-              if (!audioRef.current || !duration) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              const percent = (e.clientX - rect.left) / rect.width;
-              audioRef.current.currentTime = percent * duration;
-            }}
-          >
-            <div
-              className="bg-orange-600 dark:bg-orange-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-            ></div>
+          <div className="text-center">
+            <button
+              onClick={startTest}
+              className="bg-orange-600 hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600 text-white px-8 py-4 rounded-lg text-lg font-semibold transition-colors shadow-lg"
+            >
+              Start Listening Test
+            </button>
           </div>
+        </div>
+      </div>
+    );
+  }
 
-          <p className="text-center text-gray-600 dark:text-gray-400 text-sm mt-4">
-            {isPlaying ? 'Audio is playing...' : 'Click play to start the listening exercise'}
+  const questionsBySections = listeningTest.sections.length > 0
+    ? listeningTest.sections.map(section => ({
+        section,
+        questions: listeningTest.questions.filter(
+          q => q.questionNumber >= section.questionStart && q.questionNumber <= section.questionEnd
+        )
+      }))
+    : [{
+        section: null,
+        questions: listeningTest.questions
+      }];
+
+  return (
+    <div className="space-y-8">
+      <div className="sticky top-0 z-10 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 py-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{listeningTest.title}</h1>
+
+          <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg ${
+            timeRemaining < 300 ? 'bg-red-100 dark:bg-red-900' : 'bg-blue-100 dark:bg-blue-900'
+          }`}>
+            <Clock size={20} className={timeRemaining < 300 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'} />
+            <span className={`font-mono font-bold text-lg ${
+              timeRemaining < 300 ? 'text-red-700 dark:text-red-300' : 'text-blue-700 dark:text-blue-300'
+            }`}>
+              {formatTime(timeRemaining)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <audio
+        ref={audioRef}
+        src={listeningTest.audioUrl}
+        onContextMenu={(e) => e.preventDefault()}
+        controlsList="nodownload noplaybackrate"
+      />
+
+      <div className="bg-orange-50 dark:bg-orange-900 border-l-4 border-orange-500 dark:border-orange-400 p-4 rounded flex items-start space-x-3">
+        <AlertCircle className="text-orange-600 dark:text-orange-400 flex-shrink-0 mt-1" size={20} />
+        <div>
+          <p className="font-medium text-orange-800 dark:text-orange-200">Audio is playing</p>
+          <p className="text-sm text-orange-700 dark:text-orange-300">
+            Listen carefully and answer the questions. You cannot pause or replay the audio.
           </p>
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500 dark:border-blue-400 p-4 rounded">
-        <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Instructions</h3>
-        <p className="text-blue-700 dark:text-blue-300">
-          You will hear a conversation between a student and a university receptionist. 
-          Listen carefully and answer the questions below. You will hear the recording ONCE only.
-        </p>
-      </div>
-
-      {/* Questions */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg border border-gray-100 dark:border-gray-800">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Questions</h2>
-
-        <div className="space-y-6">
-          {listeningTest.questions.map((question, index) => (
-            <div key={question.id} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800">
-              <p className="font-medium text-gray-800 dark:text-gray-100 mb-4">
-                {index + 1}. {question.questionText}
-              </p>
-
-              <input
-                type="text"
-                value={answers[question.id] || ''}
-                onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder="Type your answer here..."
-              />
+      {questionsBySections.map((item, idx) => (
+        <div key={idx} className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg border border-gray-100 dark:border-gray-800">
+          {item.section && (
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                Part {item.section.sectionNumber} (Questions {item.section.questionStart}–{item.section.questionEnd})
+              </h2>
+              {item.section.instructions && (
+                <div className="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-500 dark:border-blue-400 p-4 rounded">
+                  <p className="text-blue-700 dark:text-blue-300">{item.section.instructions}</p>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          )}
 
-        <div className="flex justify-between items-center mt-6">
+          <div className="space-y-4">
+            {item.questions.map((question) => (
+              <QuestionRenderer
+                key={question.id}
+                question={question}
+                answer={answers[question.id] || ''}
+                onAnswerChange={(answer) => handleAnswerChange(question.id, answer)}
+                disabled={showResults}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <div className="sticky bottom-0 bg-white dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 py-4">
+        <div className="flex justify-between items-center">
           <span className="text-gray-600 dark:text-gray-400">
             {Object.keys(answers).length}/{listeningTest.questions.length} questions answered
           </span>
           <button
             onClick={handleSubmit}
-            disabled={Object.keys(answers).length === 0 || isSubmitting}
-            className="bg-orange-600 dark:bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-600 transition-colors disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center gap-2"
+            disabled={isSubmitting}
+            className="bg-orange-600 dark:bg-orange-500 text-white px-8 py-3 rounded-lg hover:bg-orange-700 dark:hover:bg-orange-600 transition-colors disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center gap-2 font-semibold"
           >
             {isSubmitting && <Loader2 size={18} className="animate-spin" />}
             {isSubmitting ? 'Submitting...' : 'Submit Answers'}
           </button>
-        </div>
-      </div>
-
-      {/* Tips */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg border border-gray-100 dark:border-gray-800">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Listening Tips</h2>
-        <div className="grid md:grid-cols-2 gap-6">
-          <div>
-            <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-2">Before Listening:</h3>
-            <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-              <li>• Read all questions carefully</li>
-              <li>• Predict possible answers</li>
-              <li>• Use good quality headphones</li>
-              <li>• Focus on keywords</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-2">While Listening:</h3>
-            <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-              <li>• Listen for specific information</li>
-              <li>• Don't panic if you miss something</li>
-              <li>• Write answers as you hear them</li>
-              <li>• Pay attention to spelling</li>
-            </ul>
-          </div>
         </div>
       </div>
     </div>

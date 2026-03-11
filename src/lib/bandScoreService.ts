@@ -6,13 +6,14 @@ export function calculateBandScore(score: number): number {
   if (score >= 30) return 7.0;
   if (score >= 26) return 6.5;
   if (score >= 23) return 6.0;
-  if (score >= 20) return 5.5;
-  if (score >= 17) return 5.0;
-  if (score >= 14) return 4.5;
-  if (score >= 11) return 4.0;
-  if (score >= 9) return 3.5;
+  if (score >= 18) return 5.5;
+  if (score >= 16) return 5.0;
+  if (score >= 13) return 4.5;
+  if (score >= 10) return 4.0;
+  if (score >= 8) return 3.5;
   if (score >= 6) return 3.0;
-  return Math.max(0, score / 10);
+  if (score >= 4) return 2.5;
+  return 2.0;
 }
 
 export function getScoreBand(bandScore: number): string {
