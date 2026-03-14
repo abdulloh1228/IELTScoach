@@ -7,6 +7,24 @@ export interface AuthUser {
   profile?: Profile;
 }
 
+function mapAuthError(error: { code?: string; message?: string }): string {
+  const errorMessages: Record<string, string> = {
+    'email_provider_disabled': 'Email login is currently disabled. Please contact the administrator to enable it in Supabase Dashboard.',
+    'invalid_credentials': 'Invalid email or password.',
+    'user_not_found': 'No account found with this email address.',
+    'email_not_confirmed': 'Please verify your email before signing in.',
+    'signup_disabled': 'New registrations are currently disabled.',
+    'weak_password': 'Password is too weak. Please use at least 6 characters.',
+    'user_already_exists': 'An account with this email already exists.',
+  };
+
+  if (error.code && errorMessages[error.code]) {
+    return errorMessages[error.code];
+  }
+
+  return error.message || 'An unexpected error occurred. Please try again.';
+}
+
 function generateAccessCode(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
@@ -17,14 +35,15 @@ function generateAccessCode(): string {
 }
 
 export const authService = {
-  // Sign up with email and password
   async signUp(email: string, password: string, fullName: string, phoneNumber: string) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      throw new Error(mapAuthError(error));
+    }
 
     // Generate unique access code
     let accessCode = generateAccessCode();
@@ -62,14 +81,15 @@ export const authService = {
     return { ...data, accessCode };
   },
 
-  // Sign in with email and password
   async signIn(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      throw new Error(mapAuthError(error));
+    }
     return data;
   },
 
