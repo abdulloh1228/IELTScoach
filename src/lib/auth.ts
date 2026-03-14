@@ -82,14 +82,17 @@ export const authService = {
   },
 
   async signIn(email: string, password: string) {
+    console.log('Attempting sign in for:', email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
+      console.error('Sign in error:', { code: error.code, message: error.message, status: error.status, name: error.name });
       throw new Error(mapAuthError(error));
     }
+    console.log('Sign in successful');
     return data;
   },
 
