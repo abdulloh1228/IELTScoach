@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { BookOpen, User, BarChart3, Settings } from 'lucide-react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import AuthModal from './components/AuthModal';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
 import ExamSelector from './components/ExamSelector';
@@ -17,58 +15,6 @@ type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' |
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const { user, loading } = useAuth();
-
-  // Debug logging
-  console.log('App render - user:', user, 'loading:', loading);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center transition-colors">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading... (Check console for details)</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors">
-        <Header onNavigate={setCurrentPage} onAuthClick={() => setShowAuthModal(true)} />
-        <main className="container mx-auto px-4 py-8">
-          <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">
-              Master IELTS with AI-Powered Preparation
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-              Get instant feedback, personalized study plans, and expert guidance to achieve your target IELTS score.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors font-semibold text-lg"
-              >
-                Start Free Practice
-              </button>
-              <button
-                onClick={() => setShowAuthModal(true)}
-                className="border-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 px-8 py-4 rounded-lg hover:bg-blue-50 dark:hover:bg-gray-800 transition-colors font-semibold text-lg"
-              >
-                Sign In
-              </button>
-            </div>
-          </div>
-        </main>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-        />
-      </div>
-    );
-  }
 
   const renderPage = () => {
     switch (currentPage) {
@@ -95,12 +41,11 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors">
-      <Header onNavigate={setCurrentPage} onAuthClick={() => setShowAuthModal(true)} />
+      <Header onNavigate={setCurrentPage} />
       <main className="container mx-auto px-4 py-8">
         {renderPage()}
       </main>
 
-      {/* Bottom Navigation for Mobile */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 lg:hidden transition-colors">
         <div className="flex justify-around py-2">
           <button
@@ -133,11 +78,6 @@ function AppContent() {
           </button>
         </div>
       </nav>
-      
-      <AuthModal 
-        isOpen={showAuthModal} 
-        onClose={() => setShowAuthModal(false)} 
-      />
     </div>
   );
 }
@@ -145,9 +85,7 @@ function AppContent() {
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <AppContent />
     </ThemeProvider>
   );
 }

@@ -1,6 +1,5 @@
 import React from 'react';
 import { TrendingUp, Calendar, Target, Award, BookOpen, Clock } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
@@ -9,8 +8,6 @@ interface ProgressProps {
 }
 
 export default function Progress({ onNavigate }: ProgressProps) {
-  const { user } = useAuth();
-  
   const progressData = [
     { date: '2024-01-15', writing: 6.5, reading: 7.0, speaking: 6.0, listening: 6.5 },
     { date: '2024-01-22', writing: 7.0, reading: 7.5, speaking: 6.5, listening: 7.0 },
@@ -22,17 +19,17 @@ export default function Progress({ onNavigate }: ProgressProps) {
   const overallScore = ((currentScores.writing + currentScores.reading + currentScores.speaking + currentScores.listening) / 4).toFixed(1);
 
   const studyStats = [
-    { label: 'Total Study Time', value: `${Math.floor(user?.profile?.total_study_hours || 0)}h ${Math.round(((user?.profile?.total_study_hours || 0) % 1) * 60)}m`, icon: Clock, color: 'blue' },
-    { label: 'Tests Completed', value: (user?.profile?.tests_completed || 0).toString(), icon: BookOpen, color: 'green' },
-    { label: 'Current Streak', value: `${user?.profile?.current_streak || 0} days`, icon: TrendingUp, color: 'purple' },
-    { label: 'Target Score', value: (user?.profile?.target_score || 8.0).toString(), icon: Target, color: 'orange' }
+    { label: 'Total Study Time', value: '0h 0m', icon: Clock, color: 'blue' },
+    { label: 'Tests Completed', value: '0', icon: BookOpen, color: 'green' },
+    { label: 'Current Streak', value: '0 days', icon: TrendingUp, color: 'blue' },
+    { label: 'Target Score', value: '8.0', icon: Target, color: 'orange' }
   ];
 
   const achievements = [
-    { title: 'First Perfect Reading Score', description: 'Scored 9.0 in Reading practice', date: '2 days ago', icon: '🎯' },
-    { title: 'Writing Warrior', description: 'Completed 10 writing tasks', date: '1 week ago', icon: '✍️' },
-    { title: 'Speaking Streak', description: '5 days of speaking practice', date: '1 week ago', icon: '🗣️' },
-    { title: 'Early Bird', description: 'Studied for 7 consecutive days', date: '2 weeks ago', icon: '🌅' }
+    { title: 'First Perfect Reading Score', description: 'Scored 9.0 in Reading practice', date: '2 days ago', icon: 'target' },
+    { title: 'Writing Warrior', description: 'Completed 10 writing tasks', date: '1 week ago', icon: 'pen' },
+    { title: 'Speaking Streak', description: '5 days of speaking practice', date: '1 week ago', icon: 'mic' },
+    { title: 'Early Bird', description: 'Studied for 7 consecutive days', date: '2 weeks ago', icon: 'sun' }
   ];
 
   const weeklyGoals = [
@@ -44,13 +41,11 @@ export default function Progress({ onNavigate }: ProgressProps) {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Your Progress</h1>
-        <p className="text-gray-600 mt-2">Track your IELTS preparation journey and improvements</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Your Progress</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Track your IELTS preparation journey and improvements</p>
       </div>
 
-      {/* Current Score Overview */}
       <div className="bg-gradient-to-r from-blue-600 to-teal-600 rounded-xl p-8 text-white">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -62,12 +57,12 @@ export default function Progress({ onNavigate }: ProgressProps) {
             <p className="text-blue-100 text-sm">+0.8 this month</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: 'Writing', score: currentScores.writing, color: 'blue' },
             { label: 'Reading', score: currentScores.reading, color: 'green' },
-            { label: 'Speaking', score: currentScores.speaking, color: 'purple' },
+            { label: 'Speaking', score: currentScores.speaking, color: 'blue' },
             { label: 'Listening', score: currentScores.listening, color: 'orange' }
           ].map((section, index) => (
             <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
@@ -78,36 +73,34 @@ export default function Progress({ onNavigate }: ProgressProps) {
         </div>
       </div>
 
-      {/* Study Statistics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {studyStats.map((stat, index) => (
-          <div key={index} className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <div className={`bg-${stat.color}-100 p-3 rounded-lg w-fit mb-4`}>
-              <stat.icon className={`text-${stat.color}-600`} size={24} />
+          <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-100 dark:border-gray-700">
+            <div className={`bg-${stat.color}-100 dark:bg-${stat.color}-900/30 p-3 rounded-lg w-fit mb-4`}>
+              <stat.icon className={`text-${stat.color}-600 dark:text-${stat.color}-400`} size={24} />
             </div>
-            <div className="text-2xl font-bold text-gray-800 mb-1">{stat.value}</div>
-            <div className="text-sm text-gray-600">{stat.label}</div>
+            <div className="text-2xl font-bold text-gray-800 dark:text-white mb-1">{stat.value}</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</div>
           </div>
         ))}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
-        {/* Score Progress Chart */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Score Progress</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-100 dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Score Progress</h2>
           <div className="space-y-6">
             {['Writing', 'Reading', 'Speaking', 'Listening'].map((section, index) => {
               const sectionKey = section.toLowerCase() as keyof typeof currentScores;
               const currentScore = currentScores[sectionKey] as number;
               const previousScore = progressData[0][sectionKey] as number;
               const improvement = currentScore - previousScore;
-              
+
               return (
                 <div key={section}>
                   <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium text-gray-800">{section}</span>
+                    <span className="font-medium text-gray-800 dark:text-white">{section}</span>
                     <div className="flex items-center space-x-2">
-                      <span className="font-bold text-gray-800">{currentScore}</span>
+                      <span className="font-bold text-gray-800 dark:text-white">{currentScore}</span>
                       <span className={`text-sm ${
                         improvement > 0 ? 'text-green-600' : improvement < 0 ? 'text-red-600' : 'text-gray-600'
                       }`}>
@@ -115,12 +108,12 @@ export default function Progress({ onNavigate }: ProgressProps) {
                       </span>
                     </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div 
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                    <div
                       className={`h-3 rounded-full transition-all duration-500 ${
                         index === 0 ? 'bg-blue-600' :
                         index === 1 ? 'bg-green-600' :
-                        index === 2 ? 'bg-purple-600' : 'bg-orange-600'
+                        index === 2 ? 'bg-cyan-600' : 'bg-orange-600'
                       }`}
                       style={{ width: `${(currentScore / 9) * 100}%` }}
                     ></div>
@@ -131,30 +124,29 @@ export default function Progress({ onNavigate }: ProgressProps) {
           </div>
         </div>
 
-        {/* Weekly Goals */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Weekly Goals</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-100 dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Weekly Goals</h2>
           <div className="space-y-4">
             {weeklyGoals.map((goal, index) => (
-              <div key={index} className="p-4 bg-gray-50 rounded-lg">
+              <div key={index} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-gray-800">{goal.goal}</span>
+                  <span className="font-medium text-gray-800 dark:text-white">{goal.goal}</span>
                   {goal.completed && (
-                    <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                    <div className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 px-2 py-1 rounded-full text-xs font-medium">
                       Completed
                     </div>
                   )}
                 </div>
                 <div className="flex items-center space-x-3">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
-                    <div 
+                  <div className="flex-1 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                    <div
                       className={`h-2 rounded-full transition-all duration-500 ${
                         goal.completed ? 'bg-green-500' : 'bg-blue-500'
                       }`}
                       style={{ width: `${(goal.progress / goal.total) * 100}%` }}
                     ></div>
                   </div>
-                  <span className="text-sm text-gray-600">{goal.progress}/{goal.total}</span>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">{goal.progress}/{goal.total}</span>
                 </div>
               </div>
             ))}
@@ -162,32 +154,32 @@ export default function Progress({ onNavigate }: ProgressProps) {
         </div>
       </div>
 
-      {/* Recent Achievements */}
-      <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Recent Achievements</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-100 dark:border-gray-700">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Recent Achievements</h2>
         <div className="grid md:grid-cols-2 gap-4">
           {achievements.map((achievement, index) => (
-            <div key={index} className="flex items-center space-x-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
-              <div className="text-2xl">{achievement.icon}</div>
+            <div key={index} className="flex items-center space-x-4 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800/30">
+              <div className="w-10 h-10 bg-yellow-100 dark:bg-yellow-900/50 rounded-full flex items-center justify-center">
+                <Target className="text-yellow-600 dark:text-yellow-400" size={20} />
+              </div>
               <div>
-                <h3 className="font-semibold text-gray-800">{achievement.title}</h3>
-                <p className="text-sm text-gray-600">{achievement.description}</p>
-                <p className="text-xs text-gray-500 mt-1">{achievement.date}</p>
+                <h3 className="font-semibold text-gray-800 dark:text-white">{achievement.title}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{achievement.description}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{achievement.date}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Study Recommendations */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Personalized Recommendations</h2>
+      <div className="bg-gradient-to-r from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl p-6 border border-blue-100 dark:border-blue-800/30">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Personalized Recommendations</h2>
         <div className="grid md:grid-cols-2 gap-6">
           <div>
-            <h3 className="font-medium text-gray-800 mb-2">Focus Areas</h3>
-            <ul className="text-sm text-gray-600 space-y-2">
+            <h3 className="font-medium text-gray-800 dark:text-white mb-2">Focus Areas</h3>
+            <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
               <li className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                 <span>Practice speaking fluency and pronunciation</span>
               </li>
               <li className="flex items-center space-x-2">
@@ -201,15 +193,15 @@ export default function Progress({ onNavigate }: ProgressProps) {
             </ul>
           </div>
           <div>
-            <h3 className="font-medium text-gray-800 mb-2">Next Steps</h3>
-            <ul className="text-sm text-gray-600 space-y-2">
+            <h3 className="font-medium text-gray-800 dark:text-white mb-2">Next Steps</h3>
+            <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
               <li className="flex items-center space-x-2">
                 <Calendar size={16} className="text-gray-400" />
                 <span>Take a full mock exam this week</span>
               </li>
               <li className="flex items-center space-x-2">
                 <Calendar size={16} className="text-gray-400" />
-                <span>Schedule speaking practice with human tutor</span>
+                <span>Schedule speaking practice session</span>
               </li>
               <li className="flex items-center space-x-2">
                 <Calendar size={16} className="text-gray-400" />

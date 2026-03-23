@@ -1,32 +1,20 @@
 import React from 'react';
-import { GraduationCap, Menu, User, Bell, LogOut, Moon, Sun } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { GraduationCap, Menu, Moon, Sun } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
 type Page = 'dashboard' | 'exam-selector' | 'writing' | 'reading' | 'speaking' | 'listening' | 'progress' | 'profile';
 
 interface HeaderProps {
   onNavigate: (page: Page) => void;
-  onAuthClick: () => void;
 }
 
-export default function Header({ onNavigate, onAuthClick }: HeaderProps) {
-  const { user, signOut } = useAuth();
+export default function Header({ onNavigate }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800 transition-colors">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
           <div
             className="flex items-center space-x-2 cursor-pointer"
             onClick={() => onNavigate('dashboard')}
@@ -42,7 +30,6 @@ export default function Header({ onNavigate, onAuthClick }: HeaderProps) {
             </div>
           </div>
 
-          {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-8">
             <button
               onClick={() => onNavigate('dashboard')}
@@ -70,7 +57,6 @@ export default function Header({ onNavigate, onAuthClick }: HeaderProps) {
             </button>
           </nav>
 
-          {/* Right side icons */}
           <div className="flex items-center space-x-4">
             <button
               onClick={toggleTheme}
@@ -79,33 +65,6 @@ export default function Header({ onNavigate, onAuthClick }: HeaderProps) {
             >
               {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
             </button>
-            {user ? (
-              <>
-                <button className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                  <Bell size={20} />
-                </button>
-                <button
-                  onClick={() => onNavigate('profile')}
-                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  <User size={20} />
-                </button>
-                <button
-                  onClick={handleSignOut}
-                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                  title="Sign Out"
-                >
-                  <LogOut size={20} />
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={onAuthClick}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Sign In
-              </button>
-            )}
             <button className="lg:hidden p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
               <Menu size={20} />
             </button>
